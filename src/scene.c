@@ -420,7 +420,7 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 	
 	setvbuf(file, NULL, _IOFBF, 64 * 1024);
 	
-	double start_time = glfwGetTime();	
+	double start_time = glfwGetTime();
 
 	fseek(file, 0, SEEK_END);
 	long file_size = ftell(file);

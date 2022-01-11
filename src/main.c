@@ -24,7 +24,16 @@
 #include "stb_image_write.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
+long frameCount = 0;
+double startRenderTime;
+
+char fps_time_str[100];
+char time_str[100];
+
+const char application_display_name[] = "Vulkan renderer";
+const char application_internal_name[] = "vulkan_renderer";
 
 /*! GLFW callbacks do not support passing a user-defined pointer. Thus, we have
 	a single static, global pointer to the running application to give them access
@@ -159,14 +168,14 @@ void specify_default_scene(scene_specification_t* scene) {
 	default_light.scaling_x = default_light.scaling_y = 1.0f;
 	default_light.radiant_flux[0] = default_light.radiant_flux[1] = default_light.radiant_flux[2] = 1.0f;
 	set_polygonal_light_vertex_count(&default_light, 4);
-	default_light.vertices_plane_space[0 * 4 + 0] = 0.0f;
-	default_light.vertices_plane_space[0 * 4 + 1] = 0.0f;
-	default_light.vertices_plane_space[1 * 4 + 0] = 1.0f;
-	default_light.vertices_plane_space[1 * 4 + 1] = 0.0f;
-	default_light.vertices_plane_space[2 * 4 + 0] = 1.0f;
-	default_light.vertices_plane_space[2 * 4 + 1] = 1.0f;
-	default_light.vertices_plane_space[3 * 4 + 0] = 0.0f;
-	default_light.vertices_plane_space[3 * 4 + 1] = 1.0f;
+	default_light.vertices_plane_space[0] = 0.0f;
+	default_light.vertices_plane_space[1] = 0.0f;
+	default_light.vertices_plane_space[4] = 1.0f;
+	default_light.vertices_plane_space[5] = 0.0f;
+	default_light.vertices_plane_space[8] = 1.0f;
+	default_light.vertices_plane_space[9] = 1.0f;
+	default_light.vertices_plane_space[12] = 0.0f;
+	default_light.vertices_plane_space[13] = 1.0f;
 	scene->polygonal_lights = malloc(sizeof(default_light));
 	scene->polygonal_lights[0] = default_light;
 	// Try to quick load. Upon success, it will override the defaults above.
@@ -1440,7 +1449,10 @@ int record_render_frame_commands(VkCommandBuffer cmd, application_t* app, uint32
 	vkCmdDraw(cmd, 3, 1, 0, 0);
 	// Run the interface pass
 	vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
-	if (app->render_settings.show_gui && !app->screenshot.path_hdr) {
+	
+	// Hide gui if save screenshot process
+	if (app->render_settings.show_gui && !app->screenshot.path_hdr && !app->screenshot.path_jpg && !app->screenshot.path_png) 
+	{
 		if (render_gui(cmd, app, swapchain_index)) {
 			printf("Failed to render the user interface.\n");
 			return 1;
@@ -1670,30 +1682,44 @@ int grab_screenshot_ldr(screenshot_t* screenshot, const swapchain_t* swapchain, 
 	if (screenshot->frame_bits == frame_bits_hdr_high)
 		ldr_copy += 3 * extent.width * extent.height;
 	int stride = extent.width * 3 * sizeof(uint8_t);
+	
+	VkDeviceSize source_index0 = 0;
+	VkDeviceSize index0 = 0;
+	VkDeviceSize index3, source_index4;
+	
 	if (!source_10_bit_hdr) {
 		for (uint32_t y = 0; y != extent.height; ++y) {
 			for (uint32_t x = 0; x != extent.width; ++x) {
-				VkDeviceSize source_index = y * pixel_row_pitch + x;
-				VkDeviceSize index = y * extent.width + x;
-				ldr_copy[index * 3 + channel_permutation[0]] = staging_data[source_index * 4 + 0];
-				ldr_copy[index * 3 + channel_permutation[1]] = staging_data[source_index * 4 + 1];
-				ldr_copy[index * 3 + channel_permutation[2]] = staging_data[source_index * 4 + 2];
+				VkDeviceSize source_index = source_index0 + x;
+				VkDeviceSize index = index0 + x;
+				index3 = index << 1 + index;
+				source_index4 = source_index << 2;
+				ldr_copy[index3 + channel_permutation[0]] = staging_data[source_index4];
+				ldr_copy[index3 + channel_permutation[1]] = staging_data[source_index4 + 1];
+				ldr_copy[index3 + channel_permutation[2]] = staging_data[source_index4 + 2];
 			}
+			
+			source_index0 += pixel_row_pitch;
+			index0 += extent.width;
 		}
 	}
 	else {
 		for (uint32_t y = 0; y != extent.height; ++y) {
 			for (uint32_t x = 0; x != extent.width; ++x) {
-				VkDeviceSize source_index = y * pixel_row_pitch + x;
-				VkDeviceSize index = y * extent.width + x;
+				VkDeviceSize source_index = source_index0 + x;
+				VkDeviceSize index = index0 + x;
+				index3 = index << 1 + index;
 				uint32_t pixel = ((uint32_t*) staging_data)[source_index];
 				uint32_t red = (pixel & 0x3FF) >> 2;
 				uint32_t green = (pixel & 0xFFC00) >> 12;
 				uint32_t blue = (pixel & 0x3FF00000) >> 22;
-				ldr_copy[index * 3 + channel_permutation[0]] = (uint8_t) red;
-				ldr_copy[index * 3 + channel_permutation[1]] = (uint8_t) green;
-				ldr_copy[index * 3 + channel_permutation[2]] = (uint8_t) blue;
+				ldr_copy[index3 + channel_permutation[0]] = (uint8_t) red;
+				ldr_copy[index3 + channel_permutation[1]] = (uint8_t) green;
+				ldr_copy[index3 + channel_permutation[2]] = (uint8_t) blue;
 			}
+			
+			source_index0 += pixel_row_pitch;
+			index0 += extent.width;
 		}
 	}
 	vkUnmapMemory(device->device, screenshot->staging.memories[0]);
@@ -1875,6 +1901,13 @@ int update_application(application_t* app, const application_updates_t* update_i
 			return 1;
 		}
 	}
+
+	if (swapchain | light_textures | noise | constant_buffers)
+	{
+		startRenderTime = glfwGetTime();
+		frameCount = 0;
+	}
+
 	// Rebuild everything else
 	if (   (noise && load_noise_table(&app->noise_table, &app->device, get_default_noise_resolution(app->render_settings.noise_type), app->render_settings.noise_type))
 		|| (ltc_table && load_ltc_table(&app->ltc_table, &app->device, "data/ggx_ltc_fit", 51))
@@ -1902,8 +1935,7 @@ int update_application(application_t* app, const application_updates_t* update_i
 int startup_application(application_t* app, int experiment_index, bool_override_t v_sync_override) {
 	memset(app, 0, sizeof(*app));
 	g_glfw_application = app;
-	const char application_display_name[] = "Vulkan renderer";
-	const char application_internal_name[] = "vulkan_renderer";
+	
 	// Create the device
 	if (create_vulkan_device(&app->device, application_internal_name, 0, VK_TRUE)) {
 		destroy_application(app);
@@ -2087,8 +2119,15 @@ int handle_frame_input(application_t* app) {
 		updates.quick_load = VK_TRUE;
 	}
 	// Take a screenshot
-	if (key_pressed(app->swapchain.window, GLFW_KEY_F10) || key_pressed(app->swapchain.window, GLFW_KEY_F12))
+	if (key_pressed(app->swapchain.window, GLFW_KEY_F10))
+	{
 		take_screenshot(&app->screenshot, "data/screenshot.png", "data/screenshot.jpg", NULL);
+	}
+
+	if (key_pressed(app->swapchain.window, GLFW_KEY_F12))
+	{
+		take_screenshot(&app->screenshot, NULL, NULL, "data/screenshot.hdr");
+	}
 	// Toggle the user interface
 	app->render_settings.show_gui ^= key_pressed(window, GLFW_KEY_F1);
 	// Toggle v-sync
@@ -2109,11 +2148,18 @@ int handle_frame_input(application_t* app) {
 		printf("Failed to apply changed settings. Shutting down.\n");
 		return 1;
 	}
+	int camera_updated = 0;
 	// Update the camera
-	control_camera(&app->scene_specification.camera, app->swapchain.window);
+	control_camera(&app->scene_specification.camera, app->swapchain.window, &camera_updated);
+
+	if (camera_updated)
+	{
+		startRenderTime = glfwGetTime();
+		frameCount = 0;
+	}
+
 	return 0;
 }
-
 
 //! Writes constants matching the current state of the application to the given
 //! memory location
@@ -2165,10 +2211,17 @@ void write_constants(void* data, application_t* app) {
 	size_t offset = sizeof(per_frame_constants_t);
 	// Write polygonal lights
 	uint32_t max_vertex_count = get_max_polygonal_light_vertex_count(&app->scene_specification);
+	
+	size_t sz_float4 = sizeof(float) * 4;
+	uint32_t sz_max_vertex_count = sz_float4 * max_vertex_count;
 	for (uint32_t i = 0; i != app->scene_specification.polygonal_light_count; ++i) {
 		polygonal_light_t* light = &app->scene_specification.polygonal_lights[i];
 		// Ensure that redundant attributes (including the texture index) are
 		// up to date
+		
+		size_t sz_light_vertex_count = sz_float4 * light->vertex_count;
+		size_t sz_light_vertex_count2 = sz_light_vertex_count - sz_float4- sz_float4;
+		
 		update_polygonal_light(light);
 		create_and_assign_light_textures(NULL, &app->device, &app->scene_specification);
 		// Write fixed-size data
@@ -2177,18 +2230,18 @@ void write_constants(void* data, application_t* app) {
 		// Write vertices
 		float* vertex_data[2] = { light->vertices_plane_space, light->vertices_world_space };
 		for (uint32_t j = 0; j != 2; ++j) {
-			memcpy(((char*) data) + offset, vertex_data[j], sizeof(float) * 4 * light->vertex_count);
+			memcpy(((char*) data) + offset, vertex_data[j], sz_light_vertex_count);
 			if (light->vertex_count < max_vertex_count)
 				// Repeat the first vertex
-				memcpy(((char*) data) + offset + sizeof(float) * 4 * light->vertex_count, vertex_data[j], sizeof(float) * 4);
-			offset += sizeof(float) * 4 * max_vertex_count;
+				memcpy(((char*) data) + offset + sz_light_vertex_count, vertex_data[j], sz_float4);
+			offset += sz_max_vertex_count;
 		}
 		// Write fan areas, repeating the last entry at the end
-		memcpy(((char*) data) + offset, light->fan_areas, sizeof(float) * 4 * (light->vertex_count - 2));
-		offset += sizeof(float) * 4 * (light->vertex_count - 2);
+		memcpy(((char*) data) + offset, light->fan_areas, sz_light_vertex_count2);
+		offset += sz_light_vertex_count2;
 		for (uint32_t i = light->vertex_count; i != max_vertex_count; ++i) {
-			memcpy(((char*) data) + offset, light->fan_areas + sizeof(float) * 4 * (light->vertex_count - 3), sizeof(float) * 4);
-			offset += sizeof(float) * 4;
+			memcpy(((char*) data) + offset, light->fan_areas + sz_light_vertex_count2 - sz_float4, sz_float4);
+			offset += sz_float4;
 		}
 	}
 }
@@ -2271,6 +2324,16 @@ int render_frame(application_t* app) {
 		printf("Failed to present the rendered frame to the window. Error code %d. Attempting a swapchain resize.\n", present_result);
 		app->frame_queue.recreate_swapchain = VK_TRUE;
 	}
+
+	frameCount++;
+
+	float elapsedTime  = glfwGetTime() - startRenderTime;
+	get_time_str(time_str, elapsedTime);
+
+	sprintf(fps_time_str, "%s | %ld pass   %.2f FPS   %s", application_display_name, frameCount, (float)frameCount / elapsedTime, time_str);
+
+	glfwSetWindowTitle(app->swapchain.window, fps_time_str);
+
 	return 0;
 }
 

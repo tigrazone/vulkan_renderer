@@ -83,7 +83,7 @@ void get_world_to_projection_space(float world_to_projection_space[4][4], const 
 }
 
 
-void control_camera(first_person_camera_t* camera, GLFWwindow* window) {
+void control_camera(first_person_camera_t* camera, GLFWwindow* window, int *need_update) {
 	// Implement camera rotation
 	static const float mouse_radians_per_pixel = 1.0f * M_PI_F / 1000.0f;
 	int right_mouse_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2);
@@ -101,6 +101,7 @@ void control_camera(first_person_camera_t* camera, GLFWwindow* window) {
 		camera->rotation_z = camera->rotation_z_0 + mouse_radians_per_pixel * mouse_position[0];
 		camera->rotation_x = (camera->rotation_x < 0.0f) ? 0.0f : camera->rotation_x;
 		camera->rotation_x = (camera->rotation_x > M_PI_F) ? M_PI_F : camera->rotation_x;
+		*need_update = 1;
 	}
 	// Figure out how much time has passed since the last invocation
 	static double last_time = 0.0;
@@ -146,6 +147,17 @@ void control_camera(first_person_camera_t* camera, GLFWwindow* window) {
 	right -= (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) ? step : 0.0f;
 	vertical += (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) ? step : 0.0f;
 	vertical -= (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) ? step : 0.0f;
+
+	if (!*need_update)
+	{
+		*need_update = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS);
+	}
+
 	// Implement camera movement
 	float cos_z = cosf(camera->rotation_z), sin_z = sinf(camera->rotation_z);
 	camera->position_world_space[0] -= sin_z * forward;

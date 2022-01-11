@@ -272,8 +272,9 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 			if (ImGui::Button("Add vertex")) {
 				set_polygonal_light_vertex_count(light, light->vertex_count + 1);
 				float* vertices = light->vertices_plane_space;
-				vertices[(light->vertex_count - 1) * 4 + 0] = 0.5f * (vertices[0] + vertices[(light->vertex_count - 2) * 4 + 0]);
-				vertices[(light->vertex_count - 1) * 4 + 1] = 0.5f * (vertices[1] + vertices[(light->vertex_count - 2) * 4 + 1]);
+				size_t lvc4 = (light->vertex_count - 1) << 2;
+				vertices[lvc4] = 0.5f * (vertices[0] + vertices[lvc4 - 4]);
+				vertices[lvc4 + 1] = 0.5f * (vertices[1] + vertices[lvc4 - 4 + 1]);
 				updates->update_light_count = VK_TRUE;
 			}
 			if (light->vertex_count > 3) {
@@ -318,14 +319,14 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 		default_light.scaling_x = default_light.scaling_y = 1.0f;
 		default_light.radiant_flux[0] = default_light.radiant_flux[1] = default_light.radiant_flux[2] = 1.0f;
 		set_polygonal_light_vertex_count(&default_light, 4);
-		default_light.vertices_plane_space[0 * 4 + 0] = 0.0f;
-		default_light.vertices_plane_space[0 * 4 + 1] = 0.0f;
-		default_light.vertices_plane_space[1 * 4 + 0] = 1.0f;
-		default_light.vertices_plane_space[1 * 4 + 1] = 0.0f;
-		default_light.vertices_plane_space[2 * 4 + 0] = 1.0f;
-		default_light.vertices_plane_space[2 * 4 + 1] = 1.0f;
-		default_light.vertices_plane_space[3 * 4 + 0] = 0.0f;
-		default_light.vertices_plane_space[3 * 4 + 1] = 1.0f;
+		default_light.vertices_plane_space[0] = 0.0f;
+		default_light.vertices_plane_space[1] = 0.0f;
+		default_light.vertices_plane_space[4] = 1.0f;
+		default_light.vertices_plane_space[5] = 0.0f;
+		default_light.vertices_plane_space[8] = 1.0f;
+		default_light.vertices_plane_space[9] = 1.0f;
+		default_light.vertices_plane_space[12] = 0.0f;
+		default_light.vertices_plane_space[13] = 1.0f;
 		scene->polygonal_lights[scene->polygonal_light_count] = default_light;
 		scene->polygonal_light_count = old.polygonal_light_count + 1;
 		updates->update_light_count = VK_TRUE;

@@ -95,13 +95,15 @@ int load_ltc_table(ltc_table_t* table, const device_t* device, const char* direc
 			// one. This way, 16-bit UNORM quantization is applicable but we
 			// need to store five entries per matrix.
 			float max_magnitude = fabsf(inverse[0][0]);
+			float max_magnitude1;
 			for (uint32_t k = 0; k != 3; ++k)
 				for (uint32_t l = 0; l != 3; ++l)
 					if (max_magnitude < fabsf(inverse[k][l]))
 						max_magnitude = fabsf(inverse[k][l]);
+			max_magnitude1 = 1.0f / max_magnitude;
 			for (uint32_t k = 0; k != 3; ++k)
 				for (uint32_t l = 0; l != 3; ++l)
-					inverse[k][l] /= max_magnitude;
+					inverse[k][l] *= max_magnitude1;
 			// Quantize and store
 			float processed_data[6] = {inverse[0][0], inverse[0][2], inverse[1][1], inverse[2][0], inverse[2][2], data[4]};
 			uint32_t data_index = 0;
