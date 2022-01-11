@@ -110,33 +110,8 @@ void control_camera(first_person_camera_t* camera, GLFWwindow* window) {
 	last_time = now;
 	// Modify the speed
 	float final_speed = camera->speed;
-
-	//additional keys - ctrl, alt, shift and combinations
-	float mult_speed = 1.0f;
-
-	int ctrls = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) + (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
-	int alts = (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) + (glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS);
-	int shifts = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) + (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
-
-	int additional_keys = ctrls + alts + shifts;
-
-	if (additional_keys == 1)
-	{
-		if (shifts)
-			mult_speed = 10.0f;
-		if (ctrls)
-			mult_speed = 0.1f;
-		if (alts)
-			mult_speed = 0.5f;
-	}
-	else if (additional_keys == 2)
-	{
-		if (shifts + ctrls == 2)
-			mult_speed = 100.0f;
-	}
-
-	final_speed *= mult_speed;
-
+	final_speed *= (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? 10.0f : 1.0f;
+	final_speed *= (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) ? 0.1f : 1.0f;
 	float step = time_delta * final_speed;
 	// Determine camera movement
 	float forward = 0.0f, right = 0.0f, vertical = 0.0f;

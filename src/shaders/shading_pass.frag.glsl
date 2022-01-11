@@ -176,7 +176,7 @@ vec3 get_polygon_radiance(vec3 sampled_dir, vec3 shading_position, polygonal_lig
 				// system used for HDRI Haven light probes
 				lookup_dir = vec3(-sampled_dir.x, sampled_dir.y, sampled_dir.z);
 			// Now we compute spherical coordinates
-			tex_coord.x = atan(lookup_dir.y, lookup_dir.x) * (0.5f * M_INV_PI);
+			tex_coord.x = atan(lookup_dir.y, lookup_dir.x) * M_HALF_INV_PI;
 			tex_coord.y = acos(lookup_dir.z) * M_INV_PI;
 		}
 		radiance *= textureLod(g_light_textures[polygonal_light.texture_index], tex_coord, 0.0f).rgb;
@@ -873,9 +873,10 @@ void main() {
 		uint shift = (g_frame_bits == 1) ? 0 : 8;
 		uvec2 half_bits = uvec2(packHalf2x16(g_out_color.rg), packHalf2x16(g_out_color.ba));
 		g_out_color = vec4(
-			((half_bits[0] & mask) >> shift) * (1.0f / 255.0f),
-			((((half_bits[0] & 0xFFFF0000) >> 16) & mask) >> shift) * (1.0f / 255.0f),
-			((half_bits[1] & mask) >> shift) * (1.0f / 255.0f),
+			//((half_bits[0] & mask) >> shift) * (1.0f / 255.0f),
+			((half_bits[0] & mask) >> shift) * INV_255,
+			((((half_bits[0] & 0xFFFF0000) >> 16) & mask) >> shift) * INV_255,
+			((half_bits[1] & mask) >> shift) * INV_255,
 			1.0f
 		);
 		// We just want to write bits to the render target, not colors. If the

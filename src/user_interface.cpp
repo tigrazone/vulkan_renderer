@@ -314,7 +314,7 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 		// Create a new one
 		polygonal_light_t default_light;
 		memset(&default_light, 0, sizeof(default_light));
-		default_light.rotation_angles[0] = 0.5f * 3.14159265358f;
+		default_light.rotation_angles[0] = 0.5f * M_PI_F;
 		default_light.scaling_x = default_light.scaling_y = 1.0f;
 		default_light.radiant_flux[0] = default_light.radiant_flux[1] = default_light.radiant_flux[2] = 1.0f;
 		set_polygonal_light_vertex_count(&default_light, 4);

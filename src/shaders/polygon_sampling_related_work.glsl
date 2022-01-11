@@ -157,7 +157,7 @@ solid_angle_rectangle_urena_t prepare_solid_angle_rectangle_sampling_urena(vec3 
 	squad.b0 = n0.z;
 	squad.b1 = n2.z;
 	squad.b0sq = squad.b0 * squad.b0;
-	squad.k = 2.0f * M_PI - g2 - g3;
+	squad.k = M_TWO_PI - g2 - g3;
 	// compute solid angle from internal angles
 	squad.solid_angle = g0 + g1 - squad.k;
 	return squad;
@@ -330,7 +330,7 @@ bilinear_cosine_warp_polygon_hart_t prepare_bilinear_cosine_warp_polygon_samplin
 	}
 	polygon.density_1[1] = max(0.0f, polygon.density_1[1]);
 	// Normalize the densities and incorporate the solid angle
-	float density_sum = 2.0f * polygon.density_0 + polygon.density_1[0] + polygon.density_1[1];
+	float density_sum = polygon.density_0 + polygon.density_0 + polygon.density_1[0] + polygon.density_1[1];
 	float normalization = 4.0f / (polygon.polygon.solid_angle * density_sum);
 	polygon.density_0 *= normalization;
 	polygon.density_1 *= normalization;
@@ -372,7 +372,7 @@ float linear_warp(float random_number, float density_0, float density_1) {
 	\see bilinear_cosine_warp_polygon_hart_t */
 vec3 sample_bilinear_cosine_warp_polygon_hart(out float out_density, bilinear_cosine_warp_polygon_hart_t polygon, vec2 random_numbers) {
 	// Warp the random numbers
-	random_numbers[1] = linear_warp(random_numbers[1], 2.0f * polygon.density_0, dot(polygon.density_1, vec2(1.0f)));
+	random_numbers[1] = linear_warp(random_numbers[1], polygon.density_0 + polygon.density_0, dot(polygon.density_1, vec2(1.0f)));
 	float density_0 = mix_fma(polygon.density_0, polygon.density_1[0], random_numbers[1]);
 	float density_1 = mix_fma(polygon.density_0, polygon.density_1[1], random_numbers[1]);
 	random_numbers[0] = linear_warp(random_numbers[0], density_0, density_1);
@@ -456,9 +456,9 @@ biquadratic_cosine_warp_polygon_hart_t prepare_biquadratic_cosine_warp_polygon_s
 //! interval, it is zero.
 float quadratic_warp(float random_number, float density_0, float density_1, float density_2) {
 	// Construct the quadratic Bezier spline
-	vec3 quadratic = vec3(density_0, 2.0f * (density_1 - density_0), density_0 - 2.0f * density_1 + density_2);
+	vec3 quadratic = vec3(density_0, (density_1 - density_0) + (density_1 - density_0), density_0 -density_1 -density_1 + density_2);
 	// Compute its indefinite integral
-	vec4 cubic = vec4(0.0f, quadratic[0], 0.5f * quadratic[1], (1.0f / 3.0f) * quadratic[2]);
+	vec4 cubic = vec4(0.0f, quadratic[0], 0.5f * quadratic[1], INV_3 * quadratic[2]);
 	// Scale the random number such that one maps to the maximal integral
 	random_number *= dot(cubic.yzw, vec3(1.0f));
 	// Look for an intersection between the cubic and the scaled random number
@@ -757,8 +757,8 @@ projected_solid_angle_polygon_arvo_t prepare_projected_solid_angle_polygon_sampl
 	[[unroll]]
 	for (uint i = 1; i != MAX_POLYGON_VERTEX_COUNT; ++i) {
 		polygon.vertex_azimuths[i] = atan(vertices[i].y, vertices[i].x);
-		polygon.vertex_azimuths[i] -= (polygon.vertex_azimuths[i] > polygon.vertex_azimuths[0] + M_PI) ? (2.0f * M_PI): 0.0f;
-		polygon.vertex_azimuths[i] += (polygon.vertex_azimuths[i] < polygon.vertex_azimuths[0] - M_PI) ? (2.0f * M_PI): 0.0f;
+		polygon.vertex_azimuths[i] -= (polygon.vertex_azimuths[i] > polygon.vertex_azimuths[0] + M_PI) ? M_TWO_PI: 0.0f;
+		polygon.vertex_azimuths[i] += (polygon.vertex_azimuths[i] < polygon.vertex_azimuths[0] - M_PI) ? M_TWO_PI: 0.0f;
 		if (i > 2 && i == polygon.vertex_count) break;
 		edge_arvo_t edge = prepare_edge_arvo(vertices[i], vertices[(i + 1) % MAX_POLYGON_VERTEX_COUNT]);
 		// If the edge is an inner edge, the order is going to flip
@@ -838,8 +838,8 @@ float evaluate_cubic_interpolation_polynomial(float sample_x, float x[4], float 
 vec3 sample_sector_within_edge(vec2 random_numbers, float target_projected_solid_angle, edge_arvo_t outer_edge, float outer_azimuth, float azimuth_0, float azimuth_1, uint iteration_count) {
 	// Split the sector into three equal parts and sample the four boundaries
 	float azimuths[4] = {
-		azimuth_0, mix_fma(azimuth_0, azimuth_1, 1.0f / 3.0f),
-		mix_fma(azimuth_0, azimuth_1, 2.0f / 3.0f), azimuth_1
+		azimuth_0, mix_fma(azimuth_0, azimuth_1, INV_3),
+		mix_fma(azimuth_0, azimuth_1, TWO_INV_3), azimuth_1
 	};
 	float projected_solid_angles[4];
 	for (uint i = 0; i != 4; ++i) {
@@ -890,8 +890,8 @@ vec3 sample_sector_within_edge(vec2 random_numbers, float target_projected_solid
 vec3 sample_sector_between_edges(vec2 random_numbers, float target_projected_solid_angle, edge_arvo_t inner_edge, float inner_azimuth, edge_arvo_t outer_edge, float outer_azimuth, float azimuth_0, float azimuth_1, uint iteration_count) {
 	// Split the sector into three equal parts and sample the four boundaries
 	float azimuths[4] = {
-		azimuth_0, mix_fma(azimuth_0, azimuth_1, 1.0f / 3.0f),
-		mix_fma(azimuth_0, azimuth_1, 2.0f / 3.0f), azimuth_1
+		azimuth_0, mix_fma(azimuth_0, azimuth_1, INV_3),
+		mix_fma(azimuth_0, azimuth_1, TWO_INV_3), azimuth_1
 	};
 	float projected_solid_angles[4];
 	for (uint i = 0; i != 4; ++i) {
@@ -950,7 +950,7 @@ vec3 sample_projected_solid_angle_polygon_arvo(projected_solid_angle_polygon_arv
 			outer_azimuth = polygon.vertex_azimuths[i];
 			azimuth_1 = polygon.vertex_azimuths[(i + 1) % MAX_POLYGON_VERTEX_COUNT];
 		}
-		azimuth_1 = (azimuth_1 < outer_azimuth) ? (azimuth_1 + 2.0f * M_PI) : azimuth_1;
+		azimuth_1 = (azimuth_1 < outer_azimuth) ? (azimuth_1 + M_TWO_PI) : azimuth_1;
 		target_projected_solid_angle += sector_projected_solid_angle;
 		random_numbers[0] = target_projected_solid_angle / sector_projected_solid_angle;
 		random_numbers[0] = clamp(random_numbers[0], 0.0f, 1.0f);

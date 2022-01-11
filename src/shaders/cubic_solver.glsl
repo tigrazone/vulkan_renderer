@@ -30,7 +30,7 @@ bool solve_cubic(out vec3 out_roots, vec4 coeffs) {
 	// Normalize the polynomial
 	coeffs.xyz /= coeffs[3];
 	// Divide middle coefficients by three
-	coeffs.yz /= 3.0f;
+	coeffs.yz *= INV_3;
 	// Compute the Hessian and the discrimant
 	vec3 delta = vec3(
 		fma(-coeffs[2], coeffs[2], coeffs[1]),
@@ -40,11 +40,11 @@ bool solve_cubic(out vec3 out_roots, vec4 coeffs) {
 	float sqrt_abs_discriminant = sqrt(abs(discriminant));
 	// Compute coefficients of the depressed cubic (third is zero, fourth is
 	// one)
-	vec2 depressed = vec2(fma(-2.0f * coeffs[2], delta[0], delta[1]), delta[0]);
+	vec2 depressed = vec2(fma(-coeffs[2] -coeffs[2], delta[0], delta[1]), delta[0]);
 	// Three real roots
 	if (discriminant >= 0.0f) {
 		// Take the cubic root of a normalized complex number
-		float theta = atan(sqrt_abs_discriminant, -depressed[0]) * (1.0f / 3.0f);
+		float theta = atan(sqrt_abs_discriminant, -depressed[0]) * INV_3;
 		vec2 cubic_root = vec2(cos(theta), sin(theta));
 		// Compute the three roots, scale appropriately and undepress
 		out_roots.xyz = vec3(
@@ -63,7 +63,7 @@ bool solve_cubic(out vec3 out_roots, vec4 coeffs) {
 		// Now take the cube root of both of them. pow() is undefined for
 		// negative inputs, so we have to carry over the sign manually.
 		vec2 cube_roots;
-		cube_roots[0] = pow(abs(quadratic_root), 1.0f / 3.0f);
+		cube_roots[0] = pow(abs(quadratic_root), INV_3);
 		cube_roots[0] = (quadratic_root < 0.0f) ? -cube_roots[0] : cube_roots[0];
 		// The other root of the quadratic can be attained with a division
 		cube_roots[1] = -depressed[1] / cube_roots[0];
