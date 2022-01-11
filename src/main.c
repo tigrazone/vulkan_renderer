@@ -1692,7 +1692,7 @@ int grab_screenshot_ldr(screenshot_t* screenshot, const swapchain_t* swapchain, 
 			for (uint32_t x = 0; x != extent.width; ++x) {
 				VkDeviceSize source_index = source_index0 + x;
 				VkDeviceSize index = index0 + x;
-				index3 = index << 1 + index;
+				index3 = index + index + index;
 				source_index4 = source_index << 2;
 				ldr_copy[index3 + channel_permutation[0]] = staging_data[source_index4];
 				ldr_copy[index3 + channel_permutation[1]] = staging_data[source_index4 + 1];
@@ -1708,7 +1708,7 @@ int grab_screenshot_ldr(screenshot_t* screenshot, const swapchain_t* swapchain, 
 			for (uint32_t x = 0; x != extent.width; ++x) {
 				VkDeviceSize source_index = source_index0 + x;
 				VkDeviceSize index = index0 + x;
-				index3 = index << 1 + index;
+				index3 = index + index + index;
 				uint32_t pixel = ((uint32_t*) staging_data)[source_index];
 				uint32_t red = (pixel & 0x3FF) >> 2;
 				uint32_t green = (pixel & 0xFFC00) >> 12;
@@ -2118,6 +2118,7 @@ int handle_frame_input(application_t* app) {
 		printf("Quick load.\n");
 		updates.quick_load = VK_TRUE;
 	}
+	
 	// Take a screenshot
 	if (key_pressed(app->swapchain.window, GLFW_KEY_F10))
 	{
@@ -2128,6 +2129,7 @@ int handle_frame_input(application_t* app) {
 	{
 		take_screenshot(&app->screenshot, NULL, NULL, "data/screenshot.hdr");
 	}
+	
 	// Toggle the user interface
 	app->render_settings.show_gui ^= key_pressed(window, GLFW_KEY_F1);
 	// Toggle v-sync
