@@ -16,6 +16,9 @@
 
 #pragma once
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 
 //! Pi with single precision
 #define M_PI_F 3.1415926535897932384626433832795f
@@ -98,4 +101,63 @@ static inline uint64_t greatest_common_divisor(uint64_t a, uint64_t b) {
 //! Returns the least common multiple of the given two positive integers
 static inline uint64_t least_common_multiple(uint64_t a, uint64_t b) {
 	return a * (b / greatest_common_divisor(a, b));
+}
+
+//! Returns the string in format H:mm:ss from elapsed time
+static inline void get_time_str(char *s, float elapsedTime)
+{
+	int hours, mins, secs;
+
+	hours = (int)floor(elapsedTime / 3600);
+	mins = (int)floor((elapsedTime - hours * 3600) / 60);
+	secs = (int)floor(elapsedTime - hours * 3600 - mins * 60);
+
+	s[0] = 0;
+
+	if (elapsedTime >= 60)
+	{
+		if (hours > 0)
+			sprintf(s, "%s%dh", s, hours);
+		if (mins > 0)
+		{
+			if (hours > 0)
+				strcat(s, " ");
+			sprintf(s, "%s%dm %ds", s, mins, secs);
+		}
+		else if (secs > 0)
+		{
+			if (hours > 0)
+				strcat(s, " ");
+			sprintf(s, "%s%ds", s, secs);
+		}
+	}
+	else
+	{
+		sprintf(s, "%.1fs", elapsedTime);
+	}
+}
+
+#define gigo (1000.0f * 1000.0f * 1000.0f)
+#define mego (1000.0f * 1000.0f)
+
+//! Returns string with mega, giga, kilo from size variable (file size, triangles, etc.)
+static inline void convert_mega_giga(const float num, float *conv_num, char *kb_mega_giga)
+{
+	*conv_num = num;
+	*kb_mega_giga = '\0';
+	if (num >= gigo)
+	{
+		*kb_mega_giga = 'G';
+		*conv_num = num / gigo;
+	}
+	else if (num >= mego)
+	{
+		*kb_mega_giga = 'm';
+		*conv_num = num / mego;
+	}
+	else if (num >= 1000.0f)
+	{
+		*kb_mega_giga = 'k';
+		*conv_num = num / 1000.0f;
+	}
 }

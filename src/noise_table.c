@@ -101,6 +101,9 @@ int load_noise_table(noise_table_t* noise, const device_t* device, VkExtent3D re
 			free(file_path);
 			return 1;
 		}
+		
+		setvbuf(noise_file, NULL, _IOFBF, 64 * 1024);
+		
 		free(file_path);
 		fread(data, sizeof(uint16_t), cell_count, noise_file);
 		fclose(noise_file);

@@ -17,6 +17,7 @@
 #include "scene.h"
 #include "textures.h"
 #include "string_utilities.h"
+#include "math_utilities.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -416,6 +417,31 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 		destroy_scene(scene, device);
 		return 1;
 	}
+	
+	setvbuf(file, NULL, _IOFBF, 64 * 1024);
+	
+	double start_time = glfwGetTime();	
+
+	fseek(file, 0, SEEK_END);
+	long file_size = ftell(file);
+
+	fseek(file, 0, SEEK_SET);
+		
+	float conv_num;
+	char kb_mega_giga;
+
+	printf("\nSCENE file %s\nsize: ", file_path);
+
+	if (file_size < 1001)
+	{
+		printf("%lld\n", file_size);
+	}
+	else
+	{
+		convert_mega_giga((float)file_size, &conv_num, &kb_mega_giga);
+		printf("%.2f%cb\n", conv_num, kb_mega_giga);
+	}
+	
 	// Read the header
 	uint32_t file_marker, version;
 	fread(&file_marker, sizeof(file_marker), 1, file);
@@ -430,7 +456,18 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 	fread(&scene->mesh.triangle_count, sizeof(uint64_t), 1, file);
 	fread(scene->mesh.dequantization_factor, sizeof(float), 3, file);
 	fread(scene->mesh.dequantization_summand, sizeof(float), 3, file);
-	printf("Triangle count: %llu\n", scene->mesh.triangle_count);
+	
+	printf("Triangle count: ");
+	if (scene->mesh.triangle_count < 10001)
+	{
+		printf("%lld\n", scene->mesh.triangle_count);
+	}
+	else
+	{
+		convert_mega_giga((float)scene->mesh.triangle_count, &conv_num, &kb_mega_giga);
+		printf("%.2f%c\n", conv_num, kb_mega_giga);
+	}
+	
 	// If there are no triangles, abort
 	if (scene->mesh.triangle_count == 0) {
 		printf("The scene file at path %s is completely empty, i.e. it holds 0 triangles.\n", file_path);
@@ -555,6 +592,9 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 		destroy_scene(scene, device);
 		return 1;
 	}
+
+	printf("SCENE LOADED in %.1fs\n\n", (float)(glfwGetTime() - start_time));
+	
 	return 0;
 }
 

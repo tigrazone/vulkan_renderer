@@ -942,7 +942,8 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		"glslangValidator -V100 --target-env spirv1.5 ",
 		"-S ", get_shader_stage_name(request->stage),
 #ifndef NDEBUG
-		" -g -Od ",
+		//" -g -Od ",
+		" -Os --ku -g0 ",
 #endif
 		concatenated_defines,
 		" -I\"", request->include_path, "\" ",
@@ -970,6 +971,9 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		free(spirv_path);
 		return 1;
 	}
+	
+	setvbuf(file, NULL, _IOFBF, 64 * 1024);
+	
 	free(command_line);
 	free(spirv_path);
 	// Read the SPIR-V code from the file

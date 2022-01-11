@@ -52,6 +52,9 @@ void quick_save(scene_specification_t* scene) {
 		printf("Quick save failed. Please check path and permissions: %s\n", scene->quick_save_path);
 		return;
 	}
+	
+	setvbuf(file, NULL, _IOFBF, 64 * 1024);
+	
 	fwrite(&scene->camera, sizeof(scene->camera), 1, file);
 	uint32_t legacy_count = 0;
 	fwrite(&legacy_count, sizeof(uint32_t), 1, file);
@@ -85,6 +88,9 @@ void quick_load(scene_specification_t* scene, application_updates_t* updates) {
 		printf("Failed to load a quick save. Please check path and permissions: %s\n", scene->quick_save_path);
 		return;
 	}
+	
+	setvbuf(file, NULL, _IOFBF, 64 * 1024);
+	
 	// Load the camera
 	fread(&scene->camera, sizeof(scene->camera), 1, file);
 	// Legacy

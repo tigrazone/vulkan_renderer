@@ -41,6 +41,9 @@ int load_ltc_table(ltc_table_t* table, const device_t* device, const char* direc
 			free(file_path);
 			return 1;
 		}
+
+		setvbuf(file, NULL, _IOFBF, 64 * 1024);
+		
 		free(file_path);
 		// Read the resolution
 		uint64_t resolution;
