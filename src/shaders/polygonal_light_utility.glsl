@@ -97,7 +97,7 @@ bool polygonal_light_ray_intersection(polygonal_light_t light, vec3 ray_origin, 
 	// Check whether the ray is on the same side of each edge
 	vec3 ray_dir = ray_end.xyz - ray_end.w * ray_origin;
 	float previous_sign = 0.0f;
-	bool result = true;
+	
 	[[unroll]]
 	for (uint i = 0; i != MAX_POLYGONAL_LIGHT_VERTEX_COUNT; ++i) {
 		float sign = determinant(mat3(
@@ -108,7 +108,7 @@ bool polygonal_light_ray_intersection(polygonal_light_t light, vec3 ray_origin, 
 		if(!((i >= 3 && i >= light.vertex_count) || previous_sign * sign >= 0.0f)) return false;
 		previous_sign = sign;
 	}
-	return result;
+	return true;
 }
 
 #endif

@@ -304,14 +304,18 @@ vec3 get_mis_estimate(bool visibility, vec3 integrand, vec3 sampled_weight, floa
 	\see get_polygon_radiance_visibility_brdf_product() */
 vec3 get_polygonal_light_mis_estimate(vec3 sampled_dir, float sampled_density, shading_data_t shading_data, polygonal_light_t polygonal_light) {
 	float lambert;
-	vec3 radiance_times_brdf = get_polygon_radiance_visibility_brdf_product(lambert, sampled_dir, shading_data, polygonal_light);
 
 #if SAMPLING_STRATEGIES_DIFFUSE_ONLY
-
+	if(sampled_density > 0.0f) {
+		vec3 radiance_times_brdf = get_polygon_radiance_visibility_brdf_product(lambert, sampled_dir, shading_data, polygonal_light);
+		return radiance_times_brdf * (lambert / sampled_density);
+	}
+	
 	// If the density is exactly zero, that must also be true for the integrand
-	return (sampled_density > 0.0f) ? (radiance_times_brdf * (lambert / sampled_density)) : vec3(0.0f);
+	return vec3(0.0f);
 
 #elif SAMPLING_STRATEGIES_DIFFUSE_GGX_MIS
+	vec3 radiance_times_brdf = get_polygon_radiance_visibility_brdf_product(lambert, sampled_dir, shading_data, polygonal_light);
 
 	float ggx_density = get_ggx_reflected_direction_density(shading_data.lambert_outgoing, shading_data.outgoing, sampled_dir, shading_data.normal, shading_data.roughness);
 	return radiance_times_brdf * lambert * get_mis_weight_over_density(sampled_density, ggx_density);
@@ -444,8 +448,10 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 	float side = dot(vec4(shading_data.position, 1.0f), polygonal_light.plane);
 	[[unroll]]
 	for (uint i = 0; i != 4; ++i) {
-		ltc.world_to_shading_space[i][1] = (side < 0.0f) ? -ltc.world_to_shading_space[i][1] : ltc.world_to_shading_space[i][1];
-		ltc.world_to_cosine_space[i][1] = (side < 0.0f) ? -ltc.world_to_cosine_space[i][1] : ltc.world_to_cosine_space[i][1];
+		if(side < 0.0f) {
+			ltc.world_to_shading_space[i][1] = -ltc.world_to_shading_space[i][1];
+			ltc.world_to_cosine_space[i][1]  = -ltc.world_to_cosine_space[i][1];
+		}
 	}
 
 #if SAMPLING_STRATEGIES_DIFFUSE_ONLY || SAMPLING_STRATEGIES_DIFFUSE_GGX_MIS
@@ -709,7 +715,7 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 	)
 
 #endif
-	return result * (1.0f / SAMPLE_COUNT);
+	return result / SAMPLE_COUNT;
 }
 
 
