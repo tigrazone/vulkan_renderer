@@ -140,22 +140,44 @@ void control_camera(first_person_camera_t* camera, GLFWwindow* window, int *need
 
 	float step = time_delta * final_speed;
 	// Determine camera movement
-	float forward = 0.0f, right = 0.0f, vertical = 0.0f;
-	forward += (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) ? step : 0.0f;
-	forward -= (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) ? step : 0.0f;
-	right += (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) ? step : 0.0f;
-	right -= (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) ? step : 0.0f;
-	vertical += (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) ? step : 0.0f;
-	vertical -= (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) ? step : 0.0f;
+	float forward = 0.0f, right = 0.0f, vertical = 0.0f, rotX = 0.0f, rotZ = 0.0, fov = 0.0;
+	forward += 	(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) ? step : 0.0f;
+	forward -= 	(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) ? step : 0.0f;
+	right +=   	(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) ? step : 0.0f;
+	right -=   	(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) ? step : 0.0f;
+	vertical += (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) ? step : 0.0f;
+	vertical -= (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) ? step : 0.0f;
+	rotZ += 	(glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) ? step*0.25f : 0.0f;
+	rotZ -= 	(glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) ? step*0.25f : 0.0f;
+	rotX += 	(glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) ? step*0.25f : 0.0f;
+	rotX -= 	(glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) ? step*0.25f : 0.0f;
+	
+	fov += 		(glfwGetKey(window, GLFW_KEY_PERIOD) == GLFW_PRESS) ? step*0.25f : 0.0f;
+	fov -= 		(glfwGetKey(window, GLFW_KEY_COMMA) == GLFW_PRESS) ? step*0.25f : 0.0f;
+	
+	camera->rotate_camera = 0;
 
 	if (!*need_update)
 	{
+		camera->rotate_camera = 
+					   (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS);
+					   
 		*need_update = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) ||
 					   (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) ||
 					   (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) ||
 					   (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) ||
 					   (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) ||
-					   (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS);
+					   (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_PERIOD) == GLFW_PRESS) ||
+					   (glfwGetKey(window, GLFW_KEY_COMMA) == GLFW_PRESS) ||
+					   camera->rotate_camera
+					   ;
 	}
 
 	// Implement camera movement
@@ -165,4 +187,26 @@ void control_camera(first_person_camera_t* camera, GLFWwindow* window, int *need
 	camera->position_world_space[0] -= cos_z * right;
 	camera->position_world_space[1] += sin_z * right;
 	camera->position_world_space[2] += vertical;
+	
+	if(
+		(glfwGetKey(window, GLFW_KEY_PERIOD) == GLFW_PRESS) ||
+		(glfwGetKey(window, GLFW_KEY_COMMA) == GLFW_PRESS)
+	) 
+	{					   
+		fov += camera->vertical_fov;
+		if(fov >= 0.0f && fov <= M_PI_F)
+			camera->vertical_fov = fov;
+		// printf("FOV=%.2f\n", camera->vertical_fov);
+	}
+	
+	if(camera->rotate_camera)
+	{		
+		camera->rotation_x_0 = camera->rotation_x + rotX;
+		camera->rotation_z_0 = camera->rotation_z - rotZ;
+		
+		camera->rotation_x = camera->rotation_x_0;
+		camera->rotation_z = camera->rotation_z_0;
+		camera->rotation_x = (camera->rotation_x < 0.0f) ? 0.0f : camera->rotation_x;
+		camera->rotation_x = (camera->rotation_x > M_PI_F) ? M_PI_F : camera->rotation_x;
+	}
 }
