@@ -169,7 +169,7 @@ vec3 get_polygon_radiance(vec3 sampled_dir, vec3 shading_position, polygonal_lig
 				lookup_dir = transpose(polygonal_light.rotation) * sampled_dir;
 				// IES profiles already include this cosine term, so we divide
 				// it out
-				radiance *= 1.0f / abs(lookup_dir.z);
+				radiance /= abs(lookup_dir.z);
 			}
 			else
 				// This code is designed to be compatible with the coordinate
@@ -628,7 +628,7 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 			// splat and accummulate
 			if (j == 0 && polygon_specular.projected_solid_angle <= 0.0f)
 				// We only have one sampling technique, so no MIS is needed
-				result += visibility ? (integrand * (1.0f / diffuse_density)) : vec3(0.0f);
+				result += visibility ? (integrand  / diffuse_density) : vec3(0.0f);
 			else if (j == 0)
 				result += get_mis_estimate(visibility, integrand, diffuse_weight, diffuse_density, specular_weight_rgb, specular_density, g_mis_visibility_estimate);
 			else

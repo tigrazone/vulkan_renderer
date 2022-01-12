@@ -105,7 +105,7 @@ bool polygonal_light_ray_intersection(polygonal_light_t light, vec3 ray_origin, 
 			light.vertices_world_space[i] - ray_origin,
 			light.vertices_world_space[(i + 1) % MAX_POLYGONAL_LIGHT_VERTEX_COUNT] - ray_origin
 		));
-		result = result && ((i >= 3 && i >= light.vertex_count) || previous_sign * sign >= 0.0f);
+		if(!((i >= 3 && i >= light.vertex_count) || previous_sign * sign >= 0.0f)) return false;
 		previous_sign = sign;
 	}
 	return result;

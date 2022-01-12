@@ -90,8 +90,7 @@ float fast_positive_atan(float y) {
 	rz = fma(ry, rz, 0.18014100193977356f);
 	rz = fma(ry, rz, -0.3302994966506958f);
 	ry = fma(ry, rz, 0.9998660087585449f);
-	rz = fma(-ry -ry, rx, M_HALF_PI);
-	rz = (abs(y) > 1.0f) ? rz : 0.0f;
+	rz = (abs(y) > 1.0f) ? fma(-ry -ry, rx, M_HALF_PI) : 0.0f;
 	rx = fma(rx, ry, rz);
 	return (y < 0.0f) ? (M_PI - rx) : rx;
 }
@@ -130,7 +129,7 @@ solid_angle_polygon_t prepare_solid_angle_polygon_sampling(uint vertex_count, ve
 	// 2.0f / sqrt(abs(polygon.vertex_dirs[0].x) + 1.0f) is pulled in there to
 	// save on multiplications later. This approach is necessary to avoid
 	// numerical instabilities in determinant computation below.
-	float householder_sign = (polygon.vertex_dirs[0].x > 0.0f) ? -1.0f : 1.0f;
+	float householder_sign = (polygon.vertex_dirs[0].x <= 0.0f) ? -1.0f : 1.0f;
 	vec2 householder_yz = polygon.vertex_dirs[0].yz * (1.0f / (abs(polygon.vertex_dirs[0].x) + 1.0f));
 	// Compute solid angles and prepare sampling
 	polygon.solid_angle = 0.0f;
@@ -149,8 +148,8 @@ solid_angle_polygon_t prepare_solid_angle_polygon_sampling(uint vertex_count, ve
 		previous_dot_1_2 = dot_1_2;
 		// Compute the bottom right minor of vertices after application of the
 		// Householder transform
-		float dot_householder_0 = fma(-householder_sign, vertices[0].x, dot_0_1);
-		float dot_householder_2 = fma(-householder_sign, vertices[2].x, dot_1_2);
+		float dot_householder_0 = fma(householder_sign, vertices[0].x, dot_0_1);
+		float dot_householder_2 = fma(householder_sign, vertices[2].x, dot_1_2);
 		mat2 bottom_right_minor = mat2(
 			fma(vec2(-dot_householder_0), householder_yz, vertices[0].yz),
 			fma(vec2(-dot_householder_2), householder_yz, vertices[2].yz));
@@ -216,10 +215,9 @@ vec3 sample_solid_angle_polygon(solid_angle_polygon_t polygon, vec2 random_numbe
 	float s2 = dot(vertices[1], new_vertex_2);
 	float s = mix_fma(1.0f, s2, random_numbers[1]);
 	float denominator = fma(-s2, s2, 1.0f);
-	float t_normed = sqrt(fma(-s, s, 1.0f) / denominator);
+	float t_normed = (denominator > 0.0f) ? sqrt(fma(-s, s, 1.0f) / denominator) : random_numbers[1];
 	// s2 may exceed one due to rounding error. random_numbers[1] is the
 	// limit of t_normed for s2 -> 1.
-	t_normed = (denominator > 0.0f) ? t_normed : random_numbers[1];
 	return fma(-t_normed, s2, s) * vertices[1] + t_normed * new_vertex_2;
 }
 
@@ -317,7 +315,7 @@ bool is_central_case(projected_solid_angle_polygon_t polygon) {
 vec2 ellipse_from_edge(vec3 vertex_0, vec3 vertex_1) {
 	vec3 normal = cross_stable(vertex_0, vertex_1);
 	float scaling = 1.0f / normal.z;
-	scaling = is_inner_ellipse(normal.xy) ? -scaling : scaling;
+	if (is_inner_ellipse(normal.xy)) scaling = -scaling;
 	vec2 ellipse = normal.xy * scaling;
 	// By convention, degenerate ellipses are outer ellipses, i.e. the first
 	// component is infinite
@@ -404,11 +402,12 @@ float get_area_between_ellipses_in_sector(vec2 inner_ellipse, float inner_rsqrt_
 	\see ellipse_from_edge() */
 float get_ellipse_area_in_sector(vec2 ellipse, vec2 dir_0, vec2 dir_1) {
 	float ellipse_rsqrt_det = get_ellipse_rsqrt_det(ellipse);
+	if(ellipse_rsqrt_det <= 0.0f) return 0.0f;
 	float det_dirs = max(+0.0f, dot(dir_1, rotate_90(dir_0)));
 	float ellipse_dot = ellipse_rsqrt_det * dot(dir_0, ellipse_transform(ellipse, dir_1));
 	float area = 0.5f * ellipse_rsqrt_det * positive_atan(det_dirs / ellipse_dot);
 	// For degenerate ellipses, the result may be NaN but must be 0.0f
-	return (ellipse_rsqrt_det > 0.0f) ? area : 0.0f;
+	return area;
 }
 
 
@@ -535,14 +534,14 @@ projected_solid_angle_polygon_t prepare_projected_solid_angle_polygon_sampling(u
 		// If the edge is an inner edge, the order is going to flip
 		polygon.ellipses[i] = ellipse_inner ? previous_ellipse : ellipse;
 		// In doing so, we drop one ellipse, unless we store it explicitly
-		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
+		if(is_inner_ellipse(previous_ellipse) && !ellipse_inner) polygon.inner_ellipse_0 = previous_ellipse;
 		previous_ellipse = ellipse;
 	}
 	// Same thing for the first vertex (i.e. here we close the loop)
 	vec2 ellipse = polygon.ellipses[0];
 	bool ellipse_inner = is_inner_ellipse(ellipse);
 	polygon.ellipses[0] = ellipse_inner ? previous_ellipse : ellipse;
-	polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
+	if(is_inner_ellipse(previous_ellipse) && !ellipse_inner) polygon.inner_ellipse_0 = previous_ellipse;
 	// Compute projected solid angles per sector and in total
 	polygon.projected_solid_angle = 0.0f;
 	if (is_central_case(polygon)) {
@@ -575,10 +574,14 @@ projected_solid_angle_polygon_t prepare_projected_solid_angle_polygon_sampling(u
 				outer_rsqrt_det = vertex_rsqrt_det;
 			}
 			else {
-				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
-				inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
-				outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
-				outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
+				if(vertex_inner) {
+					inner_ellipse = vertex_ellipse;
+					inner_rsqrt_det = vertex_rsqrt_det;
+				}
+				else {
+					outer_ellipse = vertex_ellipse;
+					outer_rsqrt_det = vertex_rsqrt_det;
+				}				
 			}
 			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(
 				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.vertices[i], polygon.vertices[i + 1]);
@@ -606,7 +609,7 @@ vec2 normalize_approx_and_flip(vec2 rhs, vec2 semi_circle) {
 	// rendering), just use this one instead:
 	// scaling = 1.0f / scaling;
 	// Flip the sign as needed
-	scaling = (dot(rhs, semi_circle) >= 0.0f) ? scaling : -scaling;
+	if(dot(rhs, semi_circle) < 0.0f) scaling = -scaling;
 	return scaling * rhs;
 }
 
@@ -671,9 +674,11 @@ vec2 sample_sector_between_ellipses(vec2 random_numbers, float target_area, vec2
 	// initialization. If it is not the second, we move data such that the
 	// relevant array indices are 1 and 2 anyway.
 	float target_quad_area = mix_fma(-sector_areas[0], sector_areas[1], random_numbers[0]);
-	quad_dirs[2] = (target_quad_area <= 0.0f) ? quad_dirs[0] : quad_dirs[2];
-	normalization_factor[0][2] = (target_quad_area <= 0.0f) ? normalization_factor[0][0] : normalization_factor[0][2];
-	normalization_factor[1][2] = (target_quad_area <= 0.0f) ? normalization_factor[1][0] : normalization_factor[1][2];
+	if(target_quad_area <= 0.0f) {
+		quad_dirs[2] = quad_dirs[0];
+		normalization_factor[0][2] = normalization_factor[0][0];
+		normalization_factor[1][2] = normalization_factor[1][0];
+	}
 	target_quad_area += (target_quad_area <= 0.0f) ? sector_areas[0] : -sector_areas[1];
 	// We have been a bit lazy about area computation before but now we need
 	// all the factors (except for a factor of 0.5 that cancels with a 2 later)
@@ -703,7 +708,7 @@ vec2 sample_sector_between_ellipses(vec2 random_numbers, float target_area, vec2
 	// For boundary values, the initialization is perfect but the iteration may
 	// be unstable, so we disable it
 	float acceptable_error = 1.0e-5f;
-	iteration_count = (abs(random_numbers.x - 0.5f) <= 0.5f - acceptable_error) ? iteration_count : 0;
+	if(abs(random_numbers.x - 0.5f) > 0.5f - acceptable_error) iteration_count = 0;
 
 	// Now refine this initialization iteratively
 	float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
@@ -730,7 +735,7 @@ vec2 sample_sector_between_ellipses(vec2 random_numbers, float target_area, vec2
 
 	// The halved sector is at most 90 degrees large, so the dot product with
 	// the half vector has to be positive
-	current_dir = (dot(current_dir, quad_dirs[1]) >= 0.0f) ? current_dir : -current_dir;
+	if(dot(current_dir, quad_dirs[1]) < 0.0f) current_dir = -current_dir;
 	// Sample a squared radius uniformly between the two ellipses
 	float inner_factor = 1.0f / get_ellipse_direction_factor_rsq(inner_ellipse, current_dir);
 	float outer_factor = 1.0f / get_ellipse_direction_factor_rsq(outer_ellipse, current_dir);
@@ -786,8 +791,8 @@ vec3 sample_projected_solid_angle_polygon(projected_solid_angle_polygon_t polygo
 			else {
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 				bool vertex_inner = is_inner_ellipse(vertex_ellipse);
-				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
-				outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+				if(vertex_inner) inner_ellipse = vertex_ellipse;
+				else outer_ellipse = vertex_ellipse;
 			}
 			dir_0 = polygon.vertices[i];
 			dir_1 = polygon.vertices[i + 1];
@@ -846,8 +851,8 @@ vec3 compute_projected_solid_angle_polygon_sampling_error(projected_solid_angle_
 				outer_ellipse = vertex_ellipse;
 			}
 			else {
-				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
-				outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+				if(vertex_inner) inner_ellipse = vertex_ellipse;
+				else outer_ellipse = vertex_ellipse;
 			}
 			dir_0 = polygon.vertices[i];
 		}
