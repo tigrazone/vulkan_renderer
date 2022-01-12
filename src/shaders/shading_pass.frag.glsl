@@ -446,11 +446,11 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 	// If the shading point is on the wrong side of the polygon, we get a
 	// correct winding by flipping the orientation of the shading space
 	float side = dot(vec4(shading_data.position, 1.0f), polygonal_light.plane);
+	if(side < 0.0f) {
 	[[unroll]]
-	for (uint i = 0; i != 4; ++i) {
-		if(side < 0.0f) {
-			ltc.world_to_shading_space[i][1] = -ltc.world_to_shading_space[i][1];
-			ltc.world_to_cosine_space[i][1]  = -ltc.world_to_cosine_space[i][1];
+	for (uint i = 0; i != 4; ++i) {		
+		ltc.world_to_shading_space[i][1] = -ltc.world_to_shading_space[i][1];
+		ltc.world_to_cosine_space[i][1]  = -ltc.world_to_cosine_space[i][1];
 		}
 	}
 
