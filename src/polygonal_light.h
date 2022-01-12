@@ -152,3 +152,6 @@ EXTERN_C polygonal_light_t duplicate_polygonal_light(const polygonal_light_t* li
 
 //! Frees memory and zeros the object
 EXTERN_C void destroy_polygonal_light(polygonal_light_t* light);
+
+//! Creates new default polygonal light
+EXTERN_C void create_default_polygonal_light(polygonal_light_t* default_light);

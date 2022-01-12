@@ -314,19 +314,8 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 		free(old.polygonal_lights);
 		// Create a new one
 		polygonal_light_t default_light;
-		memset(&default_light, 0, sizeof(default_light));
-		default_light.rotation_angles[0] = 0.5f * M_PI_F;
-		default_light.scaling_x = default_light.scaling_y = 1.0f;
-		default_light.radiant_flux[0] = default_light.radiant_flux[1] = default_light.radiant_flux[2] = 1.0f;
-		set_polygonal_light_vertex_count(&default_light, 4);
-		default_light.vertices_plane_space[0] = 0.0f;
-		default_light.vertices_plane_space[1] = 0.0f;
-		default_light.vertices_plane_space[4] = 1.0f;
-		default_light.vertices_plane_space[5] = 0.0f;
-		default_light.vertices_plane_space[8] = 1.0f;
-		default_light.vertices_plane_space[9] = 1.0f;
-		default_light.vertices_plane_space[12] = 0.0f;
-		default_light.vertices_plane_space[13] = 1.0f;
+		create_default_polygonal_light(&default_light);
+
 		scene->polygonal_lights[scene->polygonal_light_count] = default_light;
 		scene->polygonal_light_count = old.polygonal_light_count + 1;
 		updates->update_light_count = VK_TRUE;

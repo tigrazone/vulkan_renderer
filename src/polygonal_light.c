@@ -140,3 +140,19 @@ void destroy_polygonal_light(polygonal_light_t* light) {
 	free(light->texture_file_path);
 	memset(light, 0, sizeof(*light));
 }
+
+void create_default_polygonal_light(polygonal_light_t* default_light) {
+	memset(default_light, 0, sizeof(*default_light));
+	default_light->rotation_angles[0] = 0.5f * M_PI_F;
+	default_light->scaling_x = default_light->scaling_y = 1.0f;
+	default_light->radiant_flux[0] = default_light->radiant_flux[1] = default_light->radiant_flux[2] = 1.0f;
+	set_polygonal_light_vertex_count(default_light, 4);
+	default_light->vertices_plane_space[0] = 0.0f;
+	default_light->vertices_plane_space[1] = 0.0f;
+	default_light->vertices_plane_space[4] = 1.0f;
+	default_light->vertices_plane_space[5] = 0.0f;
+	default_light->vertices_plane_space[8] = 1.0f;
+	default_light->vertices_plane_space[9] = 1.0f;
+	default_light->vertices_plane_space[12] = 0.0f;
+	default_light->vertices_plane_space[13] = 1.0f;
+}
