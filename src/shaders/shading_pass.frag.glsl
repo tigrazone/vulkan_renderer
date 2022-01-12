@@ -627,8 +627,10 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 			// Use the appropriate MIS heuristic to turn the sample into a
 			// splat and accummulate
 			if (j == 0 && polygon_specular.projected_solid_angle <= 0.0f)
+			{
 				// We only have one sampling technique, so no MIS is needed
-				result += visibility ? (integrand  / diffuse_density) : vec3(0.0f);
+				if(visibility) result += integrand  / diffuse_density;
+			}
 			else if (j == 0)
 				result += get_mis_estimate(visibility, integrand, diffuse_weight, diffuse_density, specular_weight_rgb, specular_density, g_mis_visibility_estimate);
 			else
