@@ -35,10 +35,11 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 	ImGui::Text("Controls [?]");
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip(
-			"LMB			Interact with GUI\n"
-			"RMB			Rotate camera\n"
-			"WASDQE	Move camera\n"
-			"Ctrl			  Move slower\n"
+			"LMB			Rotate camera\n"
+			"WASDRF, arrows	Move camera\n"
+			"IKJL			Rotate camera\n"
+			",.			FOV camera\n"
+			"Ctrl		    Move slower\n"
 			"Shift			Move faster\n"
 			"F1				Toggle user interface\n"
 			"F2				Toggle v-sync\n"
