@@ -188,13 +188,13 @@ void control_camera(first_person_camera_t* camera, GLFWwindow* window, int *need
 		right -= step;
 	}
 	else
-	if(keyPress(GLFW_KEY_R) || keyPress(GLFW_KEY_DOWN))
+	if(keyPress(GLFW_KEY_R) || keyPress(GLFW_KEY_PAGE_UP))
 	{
 		kb_move_camera = 1;
 		vertical += step;
 	}
 	else
-	if(keyPress(GLFW_KEY_F) || keyPress(GLFW_KEY_DOWN))
+	if(keyPress(GLFW_KEY_F) || keyPress(GLFW_KEY_PAGE_DOWN))
 	{
 		kb_move_camera = 1;
 		vertical -= step;
