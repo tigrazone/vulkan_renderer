@@ -3,7 +3,7 @@ Original renderer is from https://github.com/MomentsInGraphics/vulkan_renderer
 
 In my verion - essence of presented rendering method, also optimised by arithmetic speedups and precalculated defines. Removed other rendering methods which is was in original repo for comparision. Also I started to create software raytracer but this one is unfinished
 
-## --------------------------------------------------------------------------
+## -------------------------------------------------------------------------
 
 This is a toy renderer written in C using Vulkan. It is intentionally
 minimalist. It has been developed and used for the papers "BRDF Importance 
