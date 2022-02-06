@@ -32,8 +32,8 @@ double startRenderTime;
 char fps_time_str[100];
 char time_str[100];
 
-const char application_display_name[] = "Pepelac renderer";
-const char application_internal_name[] = "pepelac_vk";
+const char application_display_name[] = "Vulkan renderer";
+const char application_internal_name[] = "vulkan_renderer_moments";
 
 /*! GLFW callbacks do not support passing a user-defined pointer. Thus, we have
 	a single static, global pointer to the running application to give them access
