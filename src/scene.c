@@ -54,6 +54,7 @@ int create_mesh(mesh_t* mesh, const device_t* device, VkBool32 staging) {
 	// Create the buffers
 	VkBufferCreateInfo buffer_infos[mesh_buffer_count_full];
 	memset(buffer_infos, 0, sizeof(buffer_infos));
+
 	mesh->positions.size = sizeof(uint32_t) * 2 * 3 * mesh->triangle_count;
 	mesh->normals_and_tex_coords.size = sizeof(uint16_t) * 4 * 3 * mesh->triangle_count;
 	mesh->material_indices.size = sizeof(uint8_t) * mesh->triangle_count;
@@ -82,7 +83,7 @@ int create_mesh(mesh_t* mesh, const device_t* device, VkBool32 staging) {
 		formats[mesh_buffer_type_normals_and_tex_coords] = VK_FORMAT_R16G16B16A16_UNORM;
 		formats[mesh_buffer_type_material_indices] = VK_FORMAT_R8_UINT;
 		formats[mesh_buffer_type_triangle] = VK_FORMAT_R8G8_SINT;
-		for (uint32_t i = 0; i != mesh_buffer_count_full; ++i) {
+		for(uint32_t i = 0; i != mesh_buffer_count_full; ++i) {
 			VkBufferViewCreateInfo view_info = {
 				.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
 				.buffer = mesh->buffers[i].buffer,
@@ -101,7 +102,7 @@ int create_mesh(mesh_t* mesh, const device_t* device, VkBool32 staging) {
 
 //! Frees and nulls the given mesh
 void destroy_mesh(mesh_t* mesh, const device_t* device) {
-	for (uint32_t i = 0; i != mesh_buffer_count_full; ++i) {
+	for(uint32_t i = 0; i != mesh_buffer_count_full; ++i) {
 		if (mesh->buffers[i].buffer) vkDestroyBuffer(device->device, mesh->buffers[i].buffer, NULL);
 		if (mesh->buffer_views[i]) vkDestroyBufferView(device->device, mesh->buffer_views[i], NULL);
 	}
@@ -133,6 +134,48 @@ void destroy_acceleration_structure(acceleration_structure_t* structure, const d
 }
 
 
+/*! Constructs top- and bottom-level acceleration structures for the given mesh by software BVH
+	\param structure The output structure. Cleaned up by destroy_scene().
+	\param device A device that has to support ray tracing. Otherwise this
+		method fails.
+	\param mesh The staging version of the mesh.
+	\param mesh_data Pointer to the already mapped memory of the staging mesh.
+	\return 0 on success.*/
+int create_acceleration_structure_software(acceleration_structure_t* structure, const device_t* device, const mesh_t* mesh, const char* mesh_data) {
+
+	uint32_t primitive_count = (uint32_t) mesh->triangle_count;
+	uint32_t triangle_count3 = (uint32_t) mesh->triangle_count * 3;
+
+	float *vertices = (float *) malloc(sizeof(float) * triangle_count3);
+	if (!vertices) {
+		printf("Allocation error.");
+		return 1;
+	}
+
+	// Dequantize the mesh data
+	const uint32_t* quantized_positions = (const uint32_t*) (mesh_data + mesh->positions.offset);
+
+	uint32_t i2 = 0;
+	for (uint32_t i = 0; i != triangle_count3; ++i) {
+		uint32_t quantized_position[2] = {quantized_positions[i2], quantized_positions[i2 + 1]};
+		float position[3] = {
+			(float) (quantized_position[0] & 0x1FFFFF),
+			(float) (((quantized_position[0] & 0xFFE00000) >> 21) | ((quantized_position[1] & 0x3FF) << 11)),
+			(float) ((quantized_position[1] & 0x7FFFFC00) >> 10)
+		};
+		for (uint32_t j = 0; j != 3; ++j)
+			vertices[i2 + i + j] = position[j] * mesh->dequantization_factor[j] + mesh->dequantization_summand[j];
+
+		i2 += 2;
+	}
+
+	// Used only for bvh creation. In shaders used only quantized positions
+	free(vertices);
+
+	return 0;
+}
+
+
 /*! Constructs top- and bottom-level acceleration structures for the given mesh
 	\param structure The output structure. Cleaned up by destroy_scene().
 	\param device A device that has to support ray tracing. Otherwise this
@@ -141,11 +184,19 @@ void destroy_acceleration_structure(acceleration_structure_t* structure, const d
 	\param mesh_data Pointer to the already mapped memory of the staging mesh.
 	\return 0 on success.*/
 int create_acceleration_structure(acceleration_structure_t* structure, const device_t* device, const mesh_t* mesh, const char* mesh_data) {
-	memset(structure, 0, sizeof(*structure));
+
+	uint32_t primitive_count = (uint32_t) mesh->triangle_count;
+	uint32_t triangle_count3 = (uint32_t) mesh->triangle_count * 3;
+
 	if (!device->ray_tracing_supported) {
 		printf("Cannot create an acceleration structure without ray tracing support.\n");
-		return 1;
+		printf("BUT from now create software BVH\n");
+
+		return create_acceleration_structure_software(structure, device, mesh, mesh_data);
 	}
+
+	memset(structure, 0, sizeof(*structure));
+
 	VK_LOAD(vkGetAccelerationStructureBuildSizesKHR)
 	VK_LOAD(vkCreateAccelerationStructureKHR)
 	VK_LOAD(vkGetAccelerationStructureDeviceAddressKHR)
@@ -154,7 +205,7 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 	VkBufferCreateInfo staging_infos[2] = {
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.size = mesh->triangle_count * sizeof(float) * 3 * 3,
+			.size = triangle_count3 * sizeof(float) * 3,
 			.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		},
 		{
@@ -173,21 +224,25 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 		destroy_acceleration_structure(structure, device);
 		return 1;
 	}
+
 	// Dequantize the mesh data
 	const uint32_t* quantized_positions = (const uint32_t*) (mesh_data + mesh->positions.offset);
 	float* vertices = (float*) (staging_data + staging.buffers[0].offset);
-	for (uint32_t i = 0; i != mesh->triangle_count * 3; ++i) {
-		uint32_t quantized_position[2] = {quantized_positions[2 * i + 0], quantized_positions[2 * i + 1]};
+	uint32_t i2 = 0;
+	for (uint32_t i = 0; i != triangle_count3; ++i) {
+		uint32_t quantized_position[2] = {quantized_positions[i2], quantized_positions[i2 + 1]};
 		float position[3] = {
 			(float) (quantized_position[0] & 0x1FFFFF),
 			(float) (((quantized_position[0] & 0xFFE00000) >> 21) | ((quantized_position[1] & 0x3FF) << 11)),
 			(float) ((quantized_position[1] & 0x7FFFFC00) >> 10)
 		};
 		for (uint32_t j = 0; j != 3; ++j)
-			vertices[3 * i + j] = position[j] * mesh->dequantization_factor[j] + mesh->dequantization_summand[j];
+			vertices[i2 + i + j] = position[j] * mesh->dequantization_factor[j] + mesh->dequantization_summand[j];
+
+		i2 += 2;
 	}
+
 	// Figure out how big the buffers for the bottom-level need to be
-	uint32_t primitive_count = (uint32_t) mesh->triangle_count;
 	VkAccelerationStructureBuildSizesInfoKHR bottom_sizes = {
 		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
 	};
@@ -202,7 +257,7 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 			.triangles = {
 				.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
 				.vertexData = { .deviceAddress = vkGetBufferDeviceAddress(device->device, &vertices_address) },
-				.maxVertex = primitive_count * 3 - 1,
+				.maxVertex = triangle_count3 - 1,
 				.vertexStride = 3 * sizeof(float),
 				.indexType = VK_INDEX_TYPE_NONE_KHR,
 				.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
@@ -251,7 +306,7 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 	pvkGetAccelerationStructureBuildSizesKHR(
 		device->device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
 		&top_build_info, &primitive_count, &top_sizes);
-	
+
 	// Create buffers for the acceleration structures
 	VkAccelerationStructureBuildSizesInfoKHR sizes[2] = { bottom_sizes, top_sizes };
 	VkBufferCreateInfo buffer_requests[] = {
@@ -309,7 +364,7 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 		destroy_acceleration_structure(structure, device);
 		return 1;
 	}
-	
+
 	// Specify the only instance
 	VkAccelerationStructureDeviceAddressInfoKHR address_request = {
 		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
@@ -417,16 +472,16 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 		destroy_scene(scene, device);
 		return 1;
 	}
-	
+
 	setvbuf(file, NULL, _IOFBF, 64 * 1024);
-	
+
 	double start_time = glfwGetTime();
 
 	fseek(file, 0, SEEK_END);
 	long file_size = ftell(file);
 
 	fseek(file, 0, SEEK_SET);
-		
+
 	float conv_num;
 	char kb_mega_giga;
 
@@ -441,7 +496,7 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 		convert_mega_giga((float)file_size, &conv_num, &kb_mega_giga);
 		printf("%.2f%cb\n", conv_num, kb_mega_giga);
 	}
-	
+
 	// Read the header
 	uint32_t file_marker, version;
 	fread(&file_marker, sizeof(file_marker), 1, file);
@@ -456,7 +511,7 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 	fread(&scene->mesh.triangle_count, sizeof(uint64_t), 1, file);
 	fread(scene->mesh.dequantization_factor, sizeof(float), 3, file);
 	fread(scene->mesh.dequantization_summand, sizeof(float), 3, file);
-	
+
 	printf("Triangle count: ");
 	if (scene->mesh.triangle_count < 10001)
 	{
@@ -467,7 +522,7 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 		convert_mega_giga((float)scene->mesh.triangle_count, &conv_num, &kb_mega_giga);
 		printf("%.2f%c\n", conv_num, kb_mega_giga);
 	}
-	
+
 	// If there are no triangles, abort
 	if (scene->mesh.triangle_count == 0) {
 		printf("The scene file at path %s is completely empty, i.e. it holds 0 triangles.\n", file_path);
@@ -519,7 +574,7 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 		return 1;
 	}
 	// Create an acceleration structure now that the mesh data is available
-	if (request_acceleration_structure && device->ray_tracing_supported) {
+	if (request_acceleration_structure) {
 		if (create_acceleration_structure(&scene->acceleration_structure, device, &scene->mesh, staging_data)) {
 			printf("Failed to construct an acceleration structure for the scene file at path %s.\n", file_path);
 			destroy_scene(scene, device);
@@ -561,14 +616,21 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 	uint32_t texture_count = (uint32_t) (scene->materials.material_count * material_texture_count);
 	char** texture_file_paths = malloc(sizeof(char*) * texture_count);
 	memset(texture_file_paths, 0, sizeof(char*) * texture_count);
+
+	uint32_t i_mtc = 0;
 	for (uint32_t i = 0; i != scene->materials.material_count; ++i) {
 		for (uint32_t j = 0; j != material_texture_count; ++j) {
 			const char* path_pieces[] = {
 				texture_path, "/", scene->materials.material_names[i], "_",
 				get_material_texture_suffix((material_texture_type_t) j), ".vkt"
 			};
-			texture_file_paths[i * material_texture_count + j] = concatenate_strings(COUNT_OF(path_pieces), path_pieces);
+			texture_file_paths[i_mtc + j] = concatenate_strings(
+				// COUNT_OF(path_pieces)
+				6
+				, path_pieces);
 		}
+
+		i_mtc += material_texture_count;
 	}
 	result = load_2d_textures(&scene->materials.textures, device, texture_count, (const char* const*) texture_file_paths, VK_IMAGE_USAGE_SAMPLED_BIT);
 	for (uint32_t i = 0; i != texture_count; ++i)
@@ -594,7 +656,7 @@ int load_scene(scene_t* scene, const device_t* device, const char* file_path, co
 	}
 
 	printf("SCENE LOADED in %.1fs\n\n", (float)(glfwGetTime() - start_time));
-	
+
 	return 0;
 }
 

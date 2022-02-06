@@ -23,7 +23,7 @@
 //! How many past frame times are used to compute the median
 #define FRAME_TIME_COUNT 100
 
-//! A ring buffer of glfwGetTime() values in past invocations of 
+//! A ring buffer of glfwGetTime() values in past invocations of
 //! record_frame_time(). Invalid entries are zero.
 static double g_recorded_times[FRAME_TIME_COUNT] = {0.0};
 //! The most recently written entry in the ring buffer record_times

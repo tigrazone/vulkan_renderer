@@ -21,7 +21,7 @@
 #include <math.h>
 
 //! Pi with single precision
-#define M_PI_F 3.1415926535897932384626433832795f
+#include "shaders/math_constants.glsl"
 
 //! Writes the multiplicative inverse of the given 4x4 matrix
 static inline void matrix_inverse(float inverse[4][4], const float matrix[4][4]) {
@@ -79,7 +79,7 @@ static inline float half_to_float(uint16_t half) {
 	// Make adjustments to the exponent
 	o.f *= magic.f;
 	// Make sure that inf/NaN survive
-	if (o.f >= was_infnan.f)        
+	if (o.f >= was_infnan.f)
 		o.u |= 255 << 23;
 	// Copy the sign bit
 	o.u |= (half & 0x8000) << 16;

@@ -1,0 +1,30 @@
+All models and textures in this directory are either in the public domain or
+licensed as Creative Commons Attribution. Here are the sources:
+
+# Arcade
+Author: Nicholas Hull for NVIDIA
+Source: https://github.com/NVIDIAGameWorks/Falcor
+
+# Attic
+Authors: Shuprobho Das, Fran Calvente, Asterlil, YopLand, M. Ziemys,
+Eva11dragon, Rob Tuytel, Christoph Peters
+Sources:
+https://www.blendswap.com/blend/25057
+https://3dmodelhaven.com/model/?c=furniture&m=WoodenTable_02
+https://www.blendswap.com/blend/20724
+https://www.blendswap.com/blend/12262
+https://blendswap.com/blend/17472
+https://www.blendswap.com/blend/11475
+https://texturehaven.com/
+
+# Bistro
+Author: Amazon Lumberyard
+Source: https://developer.nvidia.com/orca/amazon-lumberyard-bistro
+
+# Living room
+Author: Jay Artist
+Source: https://blendswap.com/blend/5014
+
+# Light probes
+Author: Greg Zaal
+Source: https://hdrihaven.com/

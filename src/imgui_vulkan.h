@@ -52,7 +52,7 @@ typedef struct imgui_vertex_s {
 /*! This structure is used to exchange information for drawing the user
 	interface in one frame between imgui and the renderer.*/
 typedef struct imgui_frame_s {
-	//! All vertices for the imgui interface. This typically a pointer to 
+	//! All vertices for the imgui interface. This typically a pointer to
 	//! mapped memory.
 	imgui_vertex_t* vertices;
 	//! All indices for the triangle lists rendered for the imgui interface.
@@ -74,7 +74,7 @@ typedef struct imgui_handle_s {
 } imgui_handle_t;
 
 
-//! Initializes imgui and returns a handle to work with it. Invoke 
+//! Initializes imgui and returns a handle to work with it. Invoke
 //! destroy_imgui() for cleanup.
 imgui_handle_t init_imgui(struct GLFWwindow* window);
 

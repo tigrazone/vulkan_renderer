@@ -101,9 +101,9 @@ int load_noise_table(noise_table_t* noise, const device_t* device, VkExtent3D re
 			free(file_path);
 			return 1;
 		}
-		
+
 		setvbuf(noise_file, NULL, _IOFBF, 64 * 1024);
-		
+
 		free(file_path);
 		fread(data, sizeof(uint16_t), cell_count, noise_file);
 		fclose(noise_file);
@@ -165,7 +165,9 @@ void set_noise_constants(uint32_t resolution_mask[2], uint32_t* texture_index_ma
 	resolution_mask[0] = noise->noise_array.images[0].image_info.extent.width - 1;
 	resolution_mask[1] = noise->noise_array.images[0].image_info.extent.height - 1;
 	(*texture_index_mask) = noise->noise_array.images[0].image_info.arrayLayers - 1;
+
+	uint32_t rs4 = noise->random_seed << 2;
 	for (uint32_t i = 0; i != 4; ++i)
-		random_numbers[i] = animate_noise ? wang_random_number(noise->random_seed * 4 + i) : (i * 0x123456);
+		random_numbers[i] = animate_noise ? wang_random_number(rs4 + i) : (i * 0x123456);
 	if (animate_noise) ++noise->random_seed;
 }

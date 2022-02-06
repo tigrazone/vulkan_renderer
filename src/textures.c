@@ -107,9 +107,9 @@ int load_2d_textures(images_t* textures, const device_t* device, uint32_t textur
 			destroy_texture_loading(&loading, device);
 			return 1;
 		}
-		
+
 		setvbuf(file, NULL, _IOFBF, 64 * 1024);
-		
+
 		// Check the file format marker
 		uint32_t marker, version;
 		fread(&marker, sizeof(marker), 1, file);

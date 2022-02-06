@@ -81,7 +81,8 @@ int get_imgui_frame(imgui_frame_t* frame, imgui_handle_t imgui) {
 	size_t command_list_index_offset = 0;
 	for (int i = 0; i != draw_data->CmdListsCount; ++i) {
 		ImDrawList* command_list = draw_data->CmdLists[i];
-		for (int j = 0; j != command_list->CmdBuffer.size(); ++j) {
+		uint32_t sz_cmdListCmdBuffer = command_list->CmdBuffer.size();
+		for (int j = 0; j != sz_cmdListCmdBuffer; ++j) {
 			const ImDrawCmd* source_draw = &draw_data->CmdLists[i]->CmdBuffer[j];
 			if (frame->draw_count == frame->draws_size)
 				return 1;

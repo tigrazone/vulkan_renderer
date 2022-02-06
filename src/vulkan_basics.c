@@ -144,14 +144,19 @@ int create_vulkan_device(device_t* device, const char* application_internal_name
 		VK_KHR_RAY_QUERY_EXTENSION_NAME,
 	};
 	device->device_extension_count = COUNT_OF(base_device_extension_names);
-	if (device->ray_tracing_supported)
-		device->device_extension_count += COUNT_OF(ray_tracing_device_extension_names);
+	uint32_t sz_base_device_extension_names = device->device_extension_count;
+	uint32_t sz_ray_tracing_device_extension_names = 0;
+
+	if (device->ray_tracing_supported) {
+		sz_ray_tracing_device_extension_names = COUNT_OF(ray_tracing_device_extension_names);
+		device->device_extension_count += sz_ray_tracing_device_extension_names;
+	}
 	device->device_extension_names = malloc(sizeof(char*) * device->device_extension_count);
-	for (uint32_t i = 0; i != COUNT_OF(base_device_extension_names); ++i)
+	for (uint32_t i = 0; i != sz_base_device_extension_names; ++i)
 		device->device_extension_names[i] = base_device_extension_names[i];
 	if (device->ray_tracing_supported)
-		for (uint32_t i = 0; i != COUNT_OF(ray_tracing_device_extension_names); ++i)
-			device->device_extension_names[COUNT_OF(base_device_extension_names) + i] = ray_tracing_device_extension_names[i];
+		for (uint32_t i = 0; i != sz_ray_tracing_device_extension_names; ++i)
+			device->device_extension_names[sz_base_device_extension_names + i] = ray_tracing_device_extension_names[i];
 	// Create a device
 	float queue_priorities[1] = { 0.0f };
 	VkDeviceQueueCreateInfo queue_info = {
@@ -222,9 +227,9 @@ int create_vulkan_device(device_t* device, const char* application_internal_name
 	vkGetDeviceQueue(device->device, device->queue_family_index, 0, &device->queue);
 	// Give feedback about ray tracing
 	if (device->ray_tracing_supported)
-		printf("Ray tracing is available.\n");
+		printf("RTX is available.\n");
 	else if (request_ray_tracing)
-		printf("Ray tracing was requested but is unavailable. Try installing the latest GPU drivers or using a different physical device.\n");
+		printf("RTX is unavailable. Used software raytracing\n");
 	return 0;
 }
 
@@ -386,7 +391,9 @@ int create_or_resize_swapchain(swapchain_t* swapchain, const device_t* device, V
 		VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
 		VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
 	};
-	for (uint32_t i = 0; i < COUNT_OF(composite_alpha_flags); ++i) {
+
+	uint32_t sz_composite_alpha_flags = COUNT_OF(composite_alpha_flags);
+	for (uint32_t i = 0; i < sz_composite_alpha_flags; ++i) {
 		if (surface_capabilities.supportedCompositeAlpha & composite_alpha_flags[i]) {
 			composite_alpha = composite_alpha_flags[i];
 			break;
@@ -943,7 +950,8 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		"-S ", get_shader_stage_name(request->stage),
 #ifndef NDEBUG
 		//" -g -Od ",
-		" -Os --ku -g0 ",
+		//" -Os --ku -g0 ",
+		" --ku -g0 ",
 #endif
 		concatenated_defines,
 		" -I\"", request->include_path, "\" ",
@@ -962,6 +970,8 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		return 1;
 	}
 #endif
+
+	// printf("%s\ncommand_line:\n%s\n", request->shader_file_path, command_line);
 	// Invoke the command line and see whether it produced an output file
 	system(command_line);
 	FILE* file = fopen(spirv_path, "rb");
@@ -971,9 +981,9 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		free(spirv_path);
 		return 1;
 	}
-	
+
 	setvbuf(file, NULL, _IOFBF, 64 * 1024);
-	
+
 	free(command_line);
 	free(spirv_path);
 	// Read the SPIR-V code from the file

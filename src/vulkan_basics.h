@@ -114,7 +114,7 @@ typedef struct image_request_s {
 	VkImageCreateInfo image_info;
 	/*! Description of the view that is to be created. format and image do not
 		need to be set. If the layer count or mip count are zero, they are set
-		to match the corresponding values of the image. If sType is not 
+		to match the corresponding values of the image. If sType is not
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, creation of a view is
 		skipped.*/
 	VkImageViewCreateInfo view_info;
@@ -236,7 +236,7 @@ typedef struct pipeline_with_bindings_s {
 } pipeline_with_bindings_t;
 
 
-//! Specifies a single descriptor layout and a number of 
+//! Specifies a single descriptor layout and a number of
 typedef struct descriptor_set_request_s {
 	//! The stageFlags member of each entry of bindings is ORed with this value
 	//! before using it
@@ -295,7 +295,7 @@ void destroy_vulkan_device(device_t* device);
 	\return 0 indicates success. 1 upon failure, in which case swapchain is
 		destroyed. 2 to indicate that the window is minimized. Swapchain
 		resize can be successful once that changes.*/
-int create_or_resize_swapchain(swapchain_t* swapchain, const device_t* device, VkBool32 resize, 
+int create_or_resize_swapchain(swapchain_t* swapchain, const device_t* device, VkBool32 resize,
 	const char* application_display_name, uint32_t width, uint32_t height, VkBool32 use_vsync);
 
 //! Returns the aspect ratio, i.e. width / height for the given swapchain.
@@ -311,7 +311,7 @@ void destroy_swapchain(swapchain_t* swapchain, const device_t* device);
 
 
 /*! Goes through memory types available from device and identifies the lowest
-	index that satisfies all given requirements. 
+	index that satisfies all given requirements.
 	\param memory_type_bits A bit mask indicating which memory type indices are
 		admissible. Available from VkMemoryRequirements.
 	\param property_mask A combination of VkMemoryPropertyFlagBits.

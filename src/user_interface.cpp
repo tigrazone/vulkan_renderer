@@ -61,13 +61,16 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 
 	// Scene selection
 	int scene_index = 0;
-	for (; scene_index != COUNT_OF(g_scene_paths); ++scene_index) {
+	uint32_t sz_g_scene_paths = COUNT_OF(g_scene_paths);
+
+	for (; scene_index != sz_g_scene_paths; ++scene_index) {
 		int offset = (int) strlen(scene->file_path) - (int) strlen(g_scene_paths[scene_index][1]);
 		if (offset >= 0 && strcmp(scene->file_path + offset, g_scene_paths[scene_index][1]) == 0)
 			break;
 	}
-	const char* scene_names[COUNT_OF(g_scene_paths)];
-	for (uint32_t i = 0; i != COUNT_OF(g_scene_paths); ++i)
+	const char* scene_names[sz_g_scene_paths];
+
+	for (uint32_t i = 0; i != sz_g_scene_paths; ++i)
 		scene_names[i] = g_scene_paths[i][0];
 	if (ImGui::Combo("Scene", &scene_index, scene_names, COUNT_OF(scene_names))) {
 		free(scene->file_path);
@@ -79,6 +82,8 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 		updates->quick_load = updates->reload_scene = VK_TRUE;
 	}
 
+	//tigra: unneeded settings
+	/*
 	// Sampling settings
 	const char* sampling_strategies[sampling_strategies_count];
 	sampling_strategies[sampling_strategies_diffuse_only] = "Diffuse only";
@@ -198,14 +203,20 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 		if (settings->error_display != error_display_none)
 			ImGui::DragFloat("Min error exponent (base 10)", &settings->error_min_exponent, 0.1f, -9.0f, 0.0f, "%.1f");
 	}
-	
+	*/
+
 	// Switching ray tracing on or off
-	if (app->device.ray_tracing_supported) {
-		if (ImGui::Checkbox("Trace shadow rays", (bool*) &settings->trace_shadow_rays))
+	if (app->device.ray_tracing_supported)
+	{
+		if (ImGui::Checkbox("RTX Trace shadow rays", (bool*) &settings->trace_shadow_rays))
 			updates->change_shading = VK_TRUE;
 	}
 	else
-		ImGui::Text("Ray tracing not supported");
+	{
+		if (ImGui::Checkbox("Software Trace shadow rays", (bool*) &settings->trace_shadow_rays))
+			updates->change_shading = VK_TRUE;
+	}
+
 	// Switching vertical synchronization
 	if (ImGui::Checkbox("Vsync", (bool*) &settings->v_sync))
 		updates->recreate_swapchain = VK_TRUE;
@@ -238,10 +249,10 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 		char* group_name = format_uint("Polygonal light %u", i);
 		polygonal_light_t* light = &scene->polygonal_lights[i];
 		if (ImGui::TreeNode(group_name)) {
-			float angles_degrees[3] = { light->rotation_angles[0] * 180.0f / M_PI_F, light->rotation_angles[1] * 180.0f / M_PI_F, light->rotation_angles[2] * 180.0f / M_PI_F};
+			float angles_degrees[3] = { light->rotation_angles[0] * M_180_DIV_PI, light->rotation_angles[1] * M_180_DIV_PI, light->rotation_angles[2] * M_180_DIV_PI};
 			ImGui::DragFloat3("Rotation (Euler angles)", angles_degrees, 0.1f, -180.0f, 180.0f);
 			for (uint32_t i = 0; i != 3; ++i)
-				light->rotation_angles[i] = angles_degrees[i] * M_PI_F / 180.0f;
+				light->rotation_angles[i] = angles_degrees[i] * M_PI_DIV_180;
 			float scalings[2] = { light->scaling_x, light->scaling_y };
 			ImGui::DragFloat2("Scaling (xy)", scalings, 0.01f, 0.01f, 100.0f);
 			light->scaling_x = scalings[0];
@@ -328,9 +339,13 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 	ImGui::SameLine();
 	if (ImGui::Button("Quick load"))
 		updates->quick_load = VK_TRUE;
+
+	/*
 	// A button to reproduce experiments from the publication
 	if (ImGui::Button("Reproduce experiments"))
 		app->experiment_list.next = 0;
+	*/
+
 	// That's all
 	ImGui::End();
 	ImGui::EndFrame();

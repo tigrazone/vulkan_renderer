@@ -32,8 +32,8 @@ double startRenderTime;
 char fps_time_str[100];
 char time_str[100];
 
-const char application_display_name[] = "Vulkan renderer";
-const char application_internal_name[] = "vulkan_renderer";
+const char application_display_name[] = "Pepelac renderer";
+const char application_internal_name[] = "pepelac_vk";
 
 /*! GLFW callbacks do not support passing a user-defined pointer. Thus, we have
 	a single static, global pointer to the running application to give them access
@@ -61,9 +61,9 @@ void quick_save(scene_specification_t* scene) {
 		printf("Quick save failed. Please check path and permissions: %s\n", scene->quick_save_path);
 		return;
 	}
-	
+
 	setvbuf(file, NULL, _IOFBF, 64 * 1024);
-	
+
 	fwrite(&scene->camera, sizeof(scene->camera), 1, file);
 	uint32_t legacy_count = 0;
 	fwrite(&legacy_count, sizeof(uint32_t), 1, file);
@@ -97,9 +97,9 @@ void quick_load(scene_specification_t* scene, application_updates_t* updates) {
 		printf("Failed to load a quick save. Please check path and permissions: %s\n", scene->quick_save_path);
 		return;
 	}
-	
+
 	setvbuf(file, NULL, _IOFBF, 64 * 1024);
-	
+
 	// Load the camera
 	fread(&scene->camera, sizeof(scene->camera), 1, file);
 	// Legacy
@@ -486,7 +486,7 @@ int create_geometry_pass(geometry_pass_t* pass, const device_t* device, const sw
 		destroy_geometry_pass(pass, device);
 		return 1;
 	}
-	
+
 	// Define the graphics pipeline state
 	VkVertexInputBindingDescription vertex_binding = {.binding = 0, .stride = sizeof(uint32_t) * 2};
 	VkVertexInputAttributeDescription vertex_attribute = {.location = 0, .binding = 0, .format = VK_FORMAT_R32G32_UINT, .offset = 0};
@@ -611,8 +611,8 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 	const noise_table_t* noise_table = &app->noise_table;
 	const ltc_table_t* ltc_table = &app->ltc_table;
 	pipeline_with_bindings_t* pipeline = &pass->pipeline;
-	// Are we tracing rays?
-	pass->use_ray_tracing = app->render_settings.trace_shadow_rays && app->device.ray_tracing_supported;
+	// Are we tracing rays with rtx?
+	pass->rtxON = app->device.ray_tracing_supported;
 	// Create a sampler for light textures
 	VkSamplerCreateInfo sampler_info = {
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -645,7 +645,7 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 		{ .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR },
 	};
 	get_materials_descriptor_layout(&layout_bindings[5], 5, &scene->materials);
-	uint32_t binding_count = COUNT_OF(layout_bindings) - (pass->use_ray_tracing ? 0 : 1);
+	uint32_t binding_count = COUNT_OF(layout_bindings) - (pass->rtxON ? 0 : 1);
 	descriptor_set_request_t set_request = {
 		.stage_flags = VK_SHADER_STAGE_FRAGMENT_BIT,
 		.min_descriptor_count = 1,
@@ -714,11 +714,14 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 	};
 	descriptor_set_writes[material_write_index + 1 + mesh_buffer_count] = acceleration_structure_write;
 	complete_descriptor_set_write(binding_count, descriptor_set_writes, &set_request);
+
+	uint32_t sz_descriptor_set_writes = COUNT_OF(descriptor_set_writes);
+
 	for (uint32_t i = 0; i != swapchain->image_count; ++i) {
 		constant_buffer_info.buffer = constant_buffers->buffers.buffers[i].buffer;
 		constant_buffer_info.range = constant_buffers->buffers.buffers[i].size;
 		visibility_buffer_info.imageView = render_targets->targets[i].visibility_buffer.view;
-		for (uint32_t j = 0; j != COUNT_OF(descriptor_set_writes); ++j)
+		for (uint32_t j = 0; j != sz_descriptor_set_writes; ++j)
 			descriptor_set_writes[j].dstSet = pipeline->descriptor_sets[i];
 		vkUpdateDescriptorSets(device->device, binding_count, descriptor_set_writes, 0, NULL);
 	}
@@ -764,8 +767,9 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 		format_uint("MAX_POLYGON_VERTEX_COUNT=%u", max_polygon_vertex_count),
 		format_uint("SAMPLE_COUNT=%u", app->render_settings.sample_count),
 		format_uint("SAMPLE_COUNT_CLAMPED=%u", (app->render_settings.sample_count < 33) ? app->render_settings.sample_count : 33),
-		format_uint("TRACE_SHADOW_RAYS=%u", pass->use_ray_tracing),
+		format_uint("RTX_ON=%u", app->device.ray_tracing_supported),
 		format_uint("SHOW_POLYGONAL_LIGHTS=%u", app->render_settings.show_polygonal_lights),
+		/*
 		format_uint("SAMPLING_STRATEGIES_DIFFUSE_ONLY=%u", sampling_strategies == sampling_strategies_diffuse_only),
 		format_uint("SAMPLING_STRATEGIES_DIFFUSE_GGX_MIS=%u", sampling_strategies == sampling_strategies_diffuse_ggx_mis),
 		format_uint("SAMPLING_STRATEGIES_DIFFUSE_SPECULAR_SEPARATELY=%u", sampling_strategies == sampling_strategies_diffuse_specular_separately),
@@ -787,24 +791,38 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 		format_uint("SAMPLE_POLYGON_BIQUADRATIC_COSINE_WARP_HART=%u", polygon_technique == sample_polygon_biquadratic_cosine_warp_hart),
 		format_uint("SAMPLE_POLYGON_BIQUADRATIC_COSINE_WARP_CLIPPING_HART=%u", polygon_technique == sample_polygon_biquadratic_cosine_warp_clipping_hart),
 		format_uint("SAMPLE_POLYGON_PROJECTED_SOLID_ANGLE_ARVO=%u", polygon_technique == sample_polygon_projected_solid_angle_arvo),
+
 		format_uint("SAMPLE_POLYGON_PROJECTED_SOLID_ANGLE=%u", polygon_technique == sample_polygon_projected_solid_angle || polygon_technique == sample_polygon_projected_solid_angle_biased),
 		copy_string((polygon_technique == sample_polygon_projected_solid_angle_biased) ? "USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING" : "DONT_USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING"),
+
 		format_uint("ERROR_DISPLAY_DIFFUSE=%u", error_display_diffuse),
 		format_uint("ERROR_DISPLAY_SPECULAR=%u", error_display_specular),
 		format_uint("ERROR_INDEX=%u", error_index),
+		*/
 		format_uint("OUTPUT_LINEAR_RGB=%u", output_linear_rgb),
 	};
+
+	uint32_t sz_defines = COUNT_OF(defines);
+
+	/*
+	for (uint32_t i = 0; i != sz_defines; ++i)
+	{
+		puts(defines[i]);
+	}
+	puts("");
+	*/
+
 	// Compile a fragment shader
 	shader_request_t fragment_shader_request = {
 		.shader_file_path = "src/shaders/shading_pass.frag.glsl",
 		.include_path = "src/shaders",
 		.entry_point = "main",
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.define_count = COUNT_OF(defines),
+		.define_count = sz_defines,
 		.defines = defines
 	};
 	int compile_result = compile_glsl_shader_with_second_chance(&pass->fragment_shader, device, &fragment_shader_request);
-	for (uint32_t i = 0; i != COUNT_OF(defines); ++i)
+	for (uint32_t i = 0; i != sz_defines; ++i)
 		free(defines[i]);
 	if (compile_result) {
 		printf("Failed to compile the fragment shader for the shading pass.\n");
@@ -949,10 +967,11 @@ int create_interface_pass(interface_pass_t* pass, const device_t* device, imgui_
 		}
 	};
 	pass->frame_count = swapchain->image_count;
-	uint32_t geometry_count = COUNT_OF(geometry_infos) * pass->frame_count;
+	uint32_t sz_geometry_infos = COUNT_OF(geometry_infos);
+	uint32_t geometry_count = sz_geometry_infos * pass->frame_count;
 	VkBufferCreateInfo* duplicate_geometry_infos = malloc(sizeof(VkBufferCreateInfo) * geometry_count);
 	for (uint32_t i = 0; i != geometry_count; ++i)
-		duplicate_geometry_infos[i] = geometry_infos[i % COUNT_OF(geometry_infos)];
+		duplicate_geometry_infos[i] = geometry_infos[i % sz_geometry_infos];
 	if (create_aligned_buffers(&pass->geometry_allocation, device, duplicate_geometry_infos, geometry_count, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, device->physical_device_properties.limits.nonCoherentAtomSize)) {
 		printf("Failed to create geometry buffers for the interface pass.\n");
 		destroy_interface_pass(pass, device);
@@ -989,30 +1008,32 @@ int create_interface_pass(interface_pass_t* pass, const device_t* device, imgui_
 		format_uint("VIEWPORT_WIDTH=%u", swapchain->extent.width),
 		format_uint("VIEWPORT_HEIGHT=%u", swapchain->extent.height),
 	};
+
+	uint32_t sz_gui_defines = COUNT_OF(gui_defines);
 	shader_request_t gui_vertex_request = {
 		.shader_file_path = "src/shaders/imgui.vert.glsl",
 		.include_path = "src/shaders",
 		.entry_point = "main",
 		.stage = VK_SHADER_STAGE_VERTEX_BIT,
-		.define_count = COUNT_OF(gui_defines), .defines = gui_defines
+		.define_count = sz_gui_defines, .defines = gui_defines
 	};
 	shader_request_t gui_fragment_request = {
 		.shader_file_path = "src/shaders/imgui.frag.glsl",
 		.include_path = "src/shaders",
 		.entry_point = "main",
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.define_count = COUNT_OF(gui_defines), .defines = gui_defines
+		.define_count = sz_gui_defines, .defines = gui_defines
 	};
 	if (compile_glsl_shader_with_second_chance(&pass->vertex_shader, device, &gui_vertex_request)
 		|| compile_glsl_shader_with_second_chance(&pass->fragment_shader, device, &gui_fragment_request))
 	{
 		printf("Failed to compile shaders for the GUI rendering.\n");
 		destroy_interface_pass(pass, device);
-		for (uint32_t i = 0; i != COUNT_OF(gui_defines); ++i)
+		for (uint32_t i = 0; i != sz_gui_defines; ++i)
 			free(gui_defines[i]);
 		return 1;
 	}
-	for (uint32_t i = 0; i != COUNT_OF(gui_defines); ++i)
+	for (uint32_t i = 0; i != sz_gui_defines; ++i)
 		free(gui_defines[i]);
 	// Create a sampler for the font texture of imgui
 	VkSamplerCreateInfo gui_sampler_info = {
@@ -1375,7 +1396,7 @@ int render_gui(VkCommandBuffer cmd, application_t* app, uint32_t swapchain_index
 	vkFlushMappedMemoryRanges(app->device.device, COUNT_OF(gui_ranges), gui_ranges);
 	// Record all draw calls
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pass->pipeline.pipeline);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		app->interface_pass.pipeline.pipeline_layout, 0, 1, &pass->pipeline.descriptor_sets[swapchain_index], 0, NULL);
 	vkCmdBindIndexBuffer(cmd, pass->geometries[swapchain_index].indices.buffer, 0, VK_INDEX_TYPE_UINT16);
 	const VkDeviceSize offsets[1] = {0};
@@ -1424,7 +1445,7 @@ int record_render_frame_commands(VkCommandBuffer cmd, application_t* app, uint32
 	vkCmdBeginRenderPass(cmd, &render_pass_begin, VK_SUBPASS_CONTENTS_INLINE);
 	// Render the scene to the visibility buffer
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, app->geometry_pass.pipeline.pipeline);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		app->geometry_pass.pipeline.pipeline_layout, 0, 1, &app->geometry_pass.pipeline.descriptor_sets[swapchain_index], 0, NULL);
 	const VkDeviceSize offsets[1] = {0};
 	vkCmdBindVertexBuffers(cmd, 0, 1, &app->scene.mesh.positions.buffer, offsets);
@@ -1438,9 +1459,9 @@ int record_render_frame_commands(VkCommandBuffer cmd, application_t* app, uint32
 	vkCmdDraw(cmd, 3, 1, 0, 0);
 	// Run the interface pass
 	vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
-	
+
 	// Hide gui if save screenshot process
-	if (app->render_settings.show_gui && !app->screenshot.path_hdr && !app->screenshot.path_jpg && !app->screenshot.path_png) 
+	if (app->render_settings.show_gui && !app->screenshot.path_hdr && !app->screenshot.path_jpg && !app->screenshot.path_png)
 	{
 		if (render_gui(cmd, app, swapchain_index)) {
 			printf("Failed to render the user interface.\n");
@@ -1671,11 +1692,11 @@ int grab_screenshot_ldr(screenshot_t* screenshot, const swapchain_t* swapchain, 
 	if (screenshot->frame_bits == frame_bits_hdr_high)
 		ldr_copy += 3 * extent.width * extent.height;
 	int stride = extent.width * 3 * sizeof(uint8_t);
-	
+
 	VkDeviceSize source_index0 = 0;
 	VkDeviceSize index0 = 0;
 	VkDeviceSize index3, source_index4;
-	
+
 	if (!source_10_bit_hdr) {
 		for (uint32_t y = 0; y != extent.height; ++y) {
 			for (uint32_t x = 0; x != extent.width; ++x) {
@@ -1687,7 +1708,7 @@ int grab_screenshot_ldr(screenshot_t* screenshot, const swapchain_t* swapchain, 
 				ldr_copy[index3 + channel_permutation[1]] = staging_data[source_index4 + 1];
 				ldr_copy[index3 + channel_permutation[2]] = staging_data[source_index4 + 2];
 			}
-			
+
 			source_index0 += pixel_row_pitch;
 			index0 += extent.width;
 		}
@@ -1706,7 +1727,7 @@ int grab_screenshot_ldr(screenshot_t* screenshot, const swapchain_t* swapchain, 
 				ldr_copy[index3 + channel_permutation[1]] = (uint8_t) green;
 				ldr_copy[index3 + channel_permutation[2]] = (uint8_t) blue;
 			}
-			
+
 			source_index0 += pixel_row_pitch;
 			index0 += extent.width;
 		}
@@ -1924,7 +1945,7 @@ int update_application(application_t* app, const application_updates_t* update_i
 int startup_application(application_t* app, int experiment_index, bool_override_t v_sync_override) {
 	memset(app, 0, sizeof(*app));
 	g_glfw_application = app;
-	
+
 	// Create the device
 	if (create_vulkan_device(&app->device, application_internal_name, 0, VK_TRUE)) {
 		destroy_application(app);
@@ -1950,7 +1971,10 @@ int startup_application(application_t* app, int experiment_index, bool_override_
 		specify_default_scene(&app->scene_specification);
 		specify_default_render_settings(&app->render_settings);
 	}
-	app->render_settings.trace_shadow_rays &= app->device.ray_tracing_supported;
+
+	//now supported also software raytracing
+	//app->render_settings.trace_shadow_rays &= app->device.ray_tracing_supported;
+
 	// Create the swapchain
 	if (create_or_resize_swapchain(&app->swapchain, &app->device, VK_FALSE, application_display_name, 1920, 1080, app->render_settings.v_sync)) {
 		destroy_application(app);
@@ -1959,7 +1983,7 @@ int startup_application(application_t* app, int experiment_index, bool_override_
 	glfwSetFramebufferSizeCallback(app->swapchain.window, &glfw_framebuffer_size_callback);
 	// Prepare imgui for being used
 	app->imgui = init_imgui(app->swapchain.window);
-	
+
 	// Load and create everything else
 	application_updates_t update = { .startup = VK_TRUE };
 	if (update_application(app, &update)) {
@@ -2067,7 +2091,7 @@ void glfw_framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 /*! Given a key code such as GLFW_KEY_F5, this function returns whether this
 	key is currently pressed but was not pressed when this function was last
-	invoked for this key (or this function was not invoked for this key 
+	invoked for this key (or this function was not invoked for this key
 	yet).*/
 VkBool32 key_pressed(GLFWwindow* window, int key) {
 	if (key < 0 || key >= GLFW_KEY_LAST)
@@ -2107,7 +2131,7 @@ int handle_frame_input(application_t* app) {
 		printf("Quick load.\n");
 		updates.quick_load = VK_TRUE;
 	}
-	
+
 	// Take a screenshot
 	if (key_pressed(app->swapchain.window, GLFW_KEY_F10))
 	{
@@ -2118,7 +2142,7 @@ int handle_frame_input(application_t* app) {
 	{
 		take_screenshot(&app->screenshot, NULL, NULL, "data/screenshot.hdr");
 	}
-	
+
 	// Toggle the user interface
 	app->render_settings.show_gui ^= key_pressed(window, GLFW_KEY_F1);
 	// Toggle v-sync
@@ -2171,6 +2195,7 @@ void write_constants(void* data, application_t* app) {
 		.exposure_factor = app->render_settings.exposure_factor,
 		.roughness_factor = app->render_settings.roughness_factor,
 		.frame_bits = app->screenshot.frame_bits,
+		.rtx_bits = (app->render_settings.trace_shadow_rays ? rtx_bits_TRACE_SHADOW_RAYS : 0)
 	};
 	set_noise_constants(constants.noise_resolution_mask, &constants.noise_texture_index_mask, constants.noise_random_numbers, &app->noise_table, app->render_settings.animate_noise && (app->screenshot.frame_bits == 0));
 	get_world_to_projection_space(constants.world_to_projection_space, camera, get_aspect_ratio(&app->swapchain));
@@ -2202,17 +2227,17 @@ void write_constants(void* data, application_t* app) {
 	size_t offset = sizeof(per_frame_constants_t);
 	// Write polygonal lights
 	uint32_t max_vertex_count = get_max_polygonal_light_vertex_count(&app->scene_specification);
-	
+
 	size_t sz_float4 = sizeof(float) * 4;
 	uint32_t sz_max_vertex_count = sz_float4 * max_vertex_count;
 	for (uint32_t i = 0; i != app->scene_specification.polygonal_light_count; ++i) {
 		polygonal_light_t* light = &app->scene_specification.polygonal_lights[i];
 		// Ensure that redundant attributes (including the texture index) are
 		// up to date
-		
+
 		size_t sz_light_vertex_count = sz_float4 * light->vertex_count;
 		size_t sz_light_vertex_count2 = sz_light_vertex_count - sz_float4- sz_float4;
-		
+
 		update_polygonal_light(light);
 		create_and_assign_light_textures(NULL, &app->device, &app->scene_specification);
 		// Write fixed-size data

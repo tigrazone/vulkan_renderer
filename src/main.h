@@ -289,7 +289,7 @@ typedef struct geometry_pass_s {
 //! shading in a fragment shader, possibly with ray queries for shadows
 typedef struct shading_pass_s {
 	//! 1 if the shading pass uses ray queries for shadows
-	VkBool32 use_ray_tracing;
+	VkBool32 rtxON;
 	//! Pipeline state and bindings for the shading pass
 	pipeline_with_bindings_t pipeline;
 	//! The vertex and fragment shader that implements the shading pass
@@ -499,7 +499,8 @@ typedef struct per_frame_constants_s {
 	uint32_t noise_resolution_mask[2];
 	uint32_t noise_texture_index_mask;
 	uint32_t frame_bits;
-	uint32_t padding_3[2];
+	uint32_t rtx_bits;
+	uint32_t padding_3[1];
 	uint32_t noise_random_numbers[4];
 	ltc_constants_t ltc_constants;
 } per_frame_constants_t;

@@ -33,7 +33,10 @@ int load_ltc_table(ltc_table_t* table, const device_t* device, const char* direc
 		char index_string[16];
 		sprintf(index_string, "%u", i);
 		const char* path_pieces[] = {directory, "/fit", index_string, ".dat"};
-		char* file_path = concatenate_strings(COUNT_OF(path_pieces), path_pieces);
+		char* file_path = concatenate_strings(
+			//COUNT_OF(path_pieces)
+			4
+			, path_pieces);
 		FILE* file = fopen(file_path, "rb");
 		if (!file) {
 			printf("Failed to open the linearly transformed cosine table at %s.\n", file_path);
@@ -43,7 +46,7 @@ int load_ltc_table(ltc_table_t* table, const device_t* device, const char* direc
 		}
 
 		setvbuf(file, NULL, _IOFBF, 64 * 1024);
-		
+
 		free(file_path);
 		// Read the resolution
 		uint64_t resolution;
@@ -191,7 +194,7 @@ int load_ltc_table(ltc_table_t* table, const device_t* device, const char* direc
 		.fresnel_index_summand = 0.0f,
 		.roughness_factor = (float) (table->roughness_count - 1)/ (float) table->roughness_count,
 		.roughness_summand = 0.5f / (float) table->roughness_count,
-		.inclination_factor = (float) (table->inclination_count - 1) / (0.5f * M_PI_F * table->inclination_count),
+		.inclination_factor = (float) (table->inclination_count - 1) / (M_HALF_PI * table->inclination_count),
 		.inclination_summand = 0.5f / (float) table->inclination_count
 	};
 	table->constants = constants;

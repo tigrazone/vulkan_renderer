@@ -106,14 +106,3 @@ float evaluate_ltc_density(ltc_coefficients_t ltc, vec3 dir_shading_space, float
 	float ltc_density = max(0.0f, dir_cosine_space.z) * ltc.shading_to_cosine_space_determinant / (cosine_space_length_squared * cosine_space_length_squared);
 	return ltc_density * rcp_projected_solid_angle;
 }
-
-
-/*! Like evaluate_ltc_density() but inverted. It evaluates the density of a
-	cosine distribution defined in shading space but linearly transformed to
-	cosine space. In other words, it just works with the inverse transform.*/
-float evaluate_ltc_density_inv(ltc_coefficients_t ltc, vec3 dir_cosine_space, float rcp_projected_solid_angle) {
-	vec3 dir_shading_space = ltc.cosine_to_shading_space * dir_cosine_space;
-	float shading_space_length_squared = dot(dir_shading_space, dir_shading_space);
-	float ltc_density = max(0.0f, dir_shading_space.z) / (ltc.shading_to_cosine_space_determinant * shading_space_length_squared * shading_space_length_squared);
-	return ltc_density * rcp_projected_solid_angle;
-}

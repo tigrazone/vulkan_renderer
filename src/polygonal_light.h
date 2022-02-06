@@ -144,7 +144,7 @@ typedef struct polygonal_light_s {
 EXTERN_C int set_polygonal_light_vertex_count(polygonal_light_t* light, uint32_t vertex_count);
 
 //! Updates values of redundant members. Note that vertices_world_space must be
-//! already allocated with appropriate size but 
+//! already allocated with appropriate size but
 EXTERN_C void update_polygonal_light(polygonal_light_t* light);
 
 //! Returns a deep copy of the given polygonal light

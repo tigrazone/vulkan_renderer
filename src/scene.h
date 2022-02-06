@@ -116,7 +116,7 @@ typedef enum material_texture_type_e {
 } material_texture_type_t;
 
 
-/*! A list of materials to be used in a scene. The material model is fairly, 
+/*! A list of materials to be used in a scene. The material model is fairly,
 	simplistic characterizing each material by a fixed set of textures. This
 	object handles the corresponding images and descriptors.*/
 typedef struct materials_s {
@@ -126,7 +126,7 @@ typedef struct materials_s {
 	//! for each material
 	char** material_names;
 	/*! material_texture_count * material_count textures characterizing all
-		materials. The textures for material i start at index 
+		materials. The textures for material i start at index
 		i * material_texture_count and are indexed by material_texture_t
 		entries.*/
 	images_t textures;
