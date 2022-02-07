@@ -55,20 +55,20 @@ layout (std140, row_major, binding = 0) uniform per_frame_constants {
 	//! 0 if an LDR frame should be output, 1 if low bits of a 16-bit HDR frame
 	//! should be output, 2 if high bits of a 16-bit HDR frame should be output
 	uint g_frame_bits;
-	
+
 	//rtx_bits_TRACE_SHADOW_RAYS
 	uint g_rtx_bits;
 	//! Constants to randomize access to noise textures
-	
+
 	uint POLYGONAL_LIGHT_COUNT;
 	uint SAMPLE_COUNT;
 	uint SHOW_POLYGONAL_LIGHTS;
 	uint OUTPUT_LINEAR_RGB;
-	
+
 	uvec4 g_noise_random_numbers;
 	//! Constants for accessing linearly transformed cosine tables
 	ltc_constants_t g_ltc_constants;
-	
+
 #ifdef POLYGONAL_LIGHT_ARRAY_SIZE
 	//! The polygonal lights that are illuminating the scene
 	polygonal_light_t g_polygonal_lights[POLYGONAL_LIGHT_ARRAY_SIZE];
