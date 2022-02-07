@@ -30,3 +30,4 @@ data/light_probes/fish_hoek_beach_4k.vkt
 
 imgui.ini
 *.exe
+vulkan_renderer

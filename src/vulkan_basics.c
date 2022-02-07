@@ -950,7 +950,8 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		"-S ", get_shader_stage_name(request->stage),
 #ifndef NDEBUG
 		//" -g -Od ",
-		" -Os --ku -g0 ",
+		//" -Os --ku -g0 ",
+		" --ku -g0 ",
 #endif
 		concatenated_defines,
 		" -I\"", request->include_path, "\" ",

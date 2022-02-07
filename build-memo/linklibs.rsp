@@ -1,0 +1,1 @@
+ -LC:/VulkanSDK/1.2.189.2/Lib/ ext/glfw/src/libglfw3.a -lvulkan-1 -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32      -s  -std=c++0x  -static-libgcc -static-libstdc++ -static   -Wl,--gc-sections
