@@ -158,7 +158,6 @@ vec3 get_polygon_radiance(vec3 sampled_dir, vec3 shading_position, polygonal_lig
 	\param diffuse Whether the diffuse BRDF component is evaluated.
 	\param specular Whether the specular BRDF component is evaluated.
 	\return BRDF times incoming radiance times visibility.*/
-	
 
 //! Like get_polygon_radiance_visibility_brdf_product() but always evaluates
 //! both BRDF components and also outputs the visibility term explicitly.
@@ -280,7 +279,7 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 	// matter
 
 	// Take the requested number of samples with both techniques
-	for (uint i = 0; i != SAMPLE_COUNT; ++i) { 
+	for (uint i = 0; i != SAMPLE_COUNT; ++i) {
 		// Take the samples
 		vec3 dir_shading_space_diffuse = sample_projected_solid_angle_polygon(polygon_diffuse, get_noise_2(accessor));
 		vec3 dir_shading_space_specular;
@@ -448,7 +447,7 @@ void main()
 		shading_data = get_shading_data(pixel, int(primitive_index), view_ray_direction);
 		view_ray_end = vec4(shading_data.position, 1.0f);
 	}
-	
+
 	if(SHOW_POLYGONAL_LIGHTS == 1)
 	{
 		// Display light sources
@@ -457,7 +456,7 @@ void main()
 			if (polygonal_light_ray_intersection(g_polygonal_lights[i], g_camera_position_world_space, view_ray_end))
 				final_color += get_polygon_radiance(view_ray_direction, g_camera_position_world_space, g_polygonal_lights[i]);
 	}
-	
+
 	// We only need to shade anything if there is a primitive to shade
 	if (primitive_index != 0xFFFFFFFF)
 	{
@@ -467,7 +466,7 @@ void main()
 		// Prepare noise for all sampling decisions
 		noise_accessor_t noise_accessor = get_noise_accessor(pixel, g_noise_resolution_mask, g_noise_texture_index_mask, g_noise_random_numbers);
 		// Shade with all polygonal lights
-		for (uint i = 0; i != POLYGONAL_LIGHT_COUNT; ++i) { 
+		for (uint i = 0; i != POLYGONAL_LIGHT_COUNT; ++i) {
 			final_color += evaluate_polygonal_light_shading(shading_data, ltc, g_polygonal_lights[i], noise_accessor);
 		}
 	}

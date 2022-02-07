@@ -53,29 +53,6 @@
 #include "math_constants.glsl"
 
 
-/*! This structure carries intermediate results that only need to be computed
-	once per polygon and shading point to take samples proportional to solid
-	angle. Sampling is performed by subdividing the convex polygon into
-	triangles as triangle fan around vertex 0 and then using our variant of
-	Arvo's method.*/
-struct solid_angle_polygon_t {
-	//! The number of vertices that form the polygon
-	uint vertex_count;
-	//! Normalized direction vectors from the shading point to each vertex
-	vec3 vertex_dirs[MAX_POLYGON_VERTEX_COUNT];
-	/*! A few intermediate quantities about the triangle consisting of vertices
-		i + 1, 0, and i + 2. If the three vertices are v0, v1, v2, the entries
-		are determinant(mat3(v0, v1, v2)), dot(v0 + v1, v2) and
-		1.0f + dot(v0, v1).*/
-	vec3 triangle_parameters[MAX_POLYGON_VERTEX_COUNT - 2];
-	//! At index i, this array holds the solid angle of the triangle fan formed
-	//! by vertices 0 to i + 2.
-	float fan_solid_angles[MAX_POLYGON_VERTEX_COUNT - 2];
-	//! The total solid angle of the polygon
-	float solid_angle;
-};
-
-
 /*! Returns an angle between 0 and M_PI such that tan(angle) == tangent. In
 	other words, it is a version of atan() that is offset to be non-negative.
 	Note that it may be switched to an approximate mode by the
@@ -454,7 +431,7 @@ projected_solid_angle_polygon_t prepare_projected_solid_angle_polygon_sampling(u
 				else {
 					outer_ellipse = vertex_ellipse;
 					outer_rsqrt_det = vertex_rsqrt_det;
-				}				
+				}
 			}
 			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(
 				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.vertices[i], polygon.vertices[i + 1]);
