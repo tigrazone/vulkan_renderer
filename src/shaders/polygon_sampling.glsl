@@ -593,7 +593,7 @@ vec2 sample_sector_between_ellipses(vec2 random_numbers, float target_area, vec2
 }
 
 
-/*! Produces a sample in the solid angle of the given polygon. If the random 
+/*! Produces a sample in the solid angle of the given polygon. If the random
 	numbers are uniform in [0,1]^2, the sample is uniform in the projected
 	solid angle of the polygon.
 	\param polygon Output of prepare_projected_solid_angle_polygon_sampling().

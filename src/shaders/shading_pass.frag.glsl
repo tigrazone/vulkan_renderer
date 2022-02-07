@@ -229,6 +229,9 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 	// strategies in the same loop.
 	projected_solid_angle_polygon_t polygon_diffuse;
 	projected_solid_angle_polygon_t polygon_specular;
+
+	vec3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT];
+
 	[[dont_unroll]] for (uint i = 0; i != 2; ++i)
 	{
 		// Local space is either shading space (for the diffuse technique) or
@@ -239,7 +242,6 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 			// instructions
 			polygon_diffuse = polygon_specular;
 		// Transform to local space
-		vec3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT];
 		[[unroll]] for (uint j = 0; j != MAX_POLYGONAL_LIGHT_VERTEX_COUNT; ++j)
 			vertices_local_space[j] = world_to_local_space * vec4(polygonal_light.vertices_world_space[j], 1.0f);
 		// Clip
