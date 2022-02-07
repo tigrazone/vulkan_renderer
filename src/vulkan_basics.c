@@ -146,7 +146,7 @@ int create_vulkan_device(device_t* device, const char* application_internal_name
 	device->device_extension_count = COUNT_OF(base_device_extension_names);
 	uint32_t sz_base_device_extension_names = device->device_extension_count;
 	uint32_t sz_ray_tracing_device_extension_names = 0;
-
+	
 	if (device->ray_tracing_supported) {
 		sz_ray_tracing_device_extension_names = COUNT_OF(ray_tracing_device_extension_names);
 		device->device_extension_count += sz_ray_tracing_device_extension_names;
@@ -950,8 +950,7 @@ int compile_glsl_shader(shader_t* shader, const device_t* device, const shader_r
 		"-S ", get_shader_stage_name(request->stage),
 #ifndef NDEBUG
 		//" -g -Od ",
-		//" -Os --ku -g0 ",
-		" --ku -g0 ",
+		" -Os --ku -g0 ",
 #endif
 		concatenated_defines,
 		" -I\"", request->include_path, "\" ",

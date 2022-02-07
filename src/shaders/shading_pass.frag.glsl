@@ -31,14 +31,6 @@
 #include "polygon_sampling.glsl"
 #include "polygon_clipping.glsl"
 #include "srgb_utility.glsl"
-#include "unrolling.glsl"
-
-/*! Ray tracing instructions directly inside loops cause huge slow-downs. The
-	[[unroll]] directive from GL_EXT_control_flow_attributes only helps to some
-	extent (in HLSL it is much more effective). Thus, we take a rather drastic
-	approch. We duplicate code in the pre-processor if ray tracing is enabled.
-	\see unrolling.glsl */
-#define RAY_TRACING_FOR_LOOP(INDEX, COUNT, CLAMPED_COUNT, CODE) UNROLLED_FOR_LOOP(INDEX, COUNT, CLAMPED_COUNT, CODE)
 
 //! Bindings for mesh geometry (see mesh_t in the C code)
 layout(binding = 1) uniform utextureBuffer g_quantized_vertex_positions;
@@ -49,11 +41,13 @@ layout(binding = 3) uniform utextureBuffer g_material_indices;
 layout(binding = 4, input_attachment_index = 0) uniform usubpassInput g_visibility_buffer;
 
 //! Textures (base color, specular, normal consecutively) for each material
-layout(binding = 5) uniform sampler2D g_material_textures[3 * MATERIAL_COUNT];
+//layout(binding = 5) uniform sampler2D g_material_textures[3 * MATERIAL_COUNT];
+layout(binding = 5) uniform sampler2D g_material_textures[];
 
 //! Textures for each polygonal light. These can be plane space textures, light
 //! probes or IES profiles
-layout(binding = 8) uniform sampler2D g_light_textures[LIGHT_TEXTURE_COUNT];
+//layout(binding = 8) uniform sampler2D g_light_textures[LIGHT_TEXTURE_COUNT];
+layout(binding = 8) uniform sampler2D g_light_textures[];
 
 //! The pixel index with origin in the upper left corner
 layout(origin_upper_left) in vec4 gl_FragCoord;
@@ -164,6 +158,7 @@ vec3 get_polygon_radiance(vec3 sampled_dir, vec3 shading_position, polygonal_lig
 	\param diffuse Whether the diffuse BRDF component is evaluated.
 	\param specular Whether the specular BRDF component is evaluated.
 	\return BRDF times incoming radiance times visibility.*/
+	
 
 //! Like get_polygon_radiance_visibility_brdf_product() but always evaluates
 //! both BRDF components and also outputs the visibility term explicitly.
@@ -285,8 +280,7 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 	// matter
 
 	// Take the requested number of samples with both techniques
-	RAY_TRACING_FOR_LOOP(
-		i, SAMPLE_COUNT, SAMPLE_COUNT_CLAMPED,
+	for (uint i = 0; i != SAMPLE_COUNT; ++i) { 
 		// Take the samples
 		vec3 dir_shading_space_diffuse = sample_projected_solid_angle_polygon(polygon_diffuse, get_noise_2(accessor));
 		vec3 dir_shading_space_specular;
@@ -319,7 +313,8 @@ vec3 evaluate_polygonal_light_shading(shading_data_t shading_data, ltc_coefficie
 				result += get_mis_estimate(visibility, integrand, diffuse_weight, diffuse_density, specular_weight_rgb, specular_density, g_mis_visibility_estimate);
 			else
 				result += get_mis_estimate(visibility, integrand, specular_weight_rgb, specular_density, diffuse_weight, diffuse_density, g_mis_visibility_estimate);
-		})
+		}
+	}
 
 	return result / SAMPLE_COUNT;
 }
@@ -452,25 +447,29 @@ void main()
 		// Prepare shading data for the visible surface point
 		shading_data = get_shading_data(pixel, int(primitive_index), view_ray_direction);
 		view_ray_end = vec4(shading_data.position, 1.0f);
-#if SHOW_POLYGONAL_LIGHTS
 	}
-	// Display light sources
-	view_ray_direction = normalize(view_ray_direction);
-	for (uint i = 0; i != POLYGONAL_LIGHT_COUNT; ++i)
-		if (polygonal_light_ray_intersection(g_polygonal_lights[i], g_camera_position_world_space, view_ray_end))
-			final_color += get_polygon_radiance(view_ray_direction, g_camera_position_world_space, g_polygonal_lights[i]);
+	
+	if(SHOW_POLYGONAL_LIGHTS == 1)
+	{
+		// Display light sources
+		view_ray_direction = normalize(view_ray_direction);
+		for (uint i = 0; i != POLYGONAL_LIGHT_COUNT; ++i)
+			if (polygonal_light_ray_intersection(g_polygonal_lights[i], g_camera_position_world_space, view_ray_end))
+				final_color += get_polygon_radiance(view_ray_direction, g_camera_position_world_space, g_polygonal_lights[i]);
+	}
+	
 	// We only need to shade anything if there is a primitive to shade
 	if (primitive_index != 0xFFFFFFFF)
 	{
-#endif
 		// Get ready to use linearly transformed cosines
 		float fresnel_luminance = dot(shading_data.fresnel_0, luminance_weights);
 		ltc_coefficients_t ltc = get_ltc_coefficients(fresnel_luminance, shading_data.roughness, shading_data.position, shading_data.normal, shading_data.outgoing, g_ltc_constants);
 		// Prepare noise for all sampling decisions
 		noise_accessor_t noise_accessor = get_noise_accessor(pixel, g_noise_resolution_mask, g_noise_texture_index_mask, g_noise_random_numbers);
 		// Shade with all polygonal lights
-		RAY_TRACING_FOR_LOOP(i, POLYGONAL_LIGHT_COUNT, POLYGONAL_LIGHT_COUNT_CLAMPED,
-							 final_color += evaluate_polygonal_light_shading(shading_data, ltc, g_polygonal_lights[i], noise_accessor);)
+		for (uint i = 0; i != POLYGONAL_LIGHT_COUNT; ++i) { 
+			final_color += evaluate_polygonal_light_shading(shading_data, ltc, g_polygonal_lights[i], noise_accessor);
+		}
 	}
 	// If there are NaNs or INFs, we want to know. Make them pink.
 	if (isnan(final_color.r) || isnan(final_color.g) || isnan(final_color.b) || isinf(final_color.r) || isinf(final_color.g) || isinf(final_color.b))
@@ -495,13 +494,13 @@ void main()
 		// We just want to write bits to the render target, not colors. If the
 		// graphics pipeline does linear to sRGB conversion for us, we do sRGB
 		// to linear conversion here to counter that.
-#if OUTPUT_LINEAR_RGB
-		g_out_color.rgb = convert_srgb_to_linear_rgb(g_out_color.rgb);
-#endif
+		if(OUTPUT_LINEAR_RGB> 0) {
+			g_out_color.rgb = convert_srgb_to_linear_rgb(g_out_color.rgb);
+		}
 	}
-#if !OUTPUT_LINEAR_RGB
 	// if g_frame_bits == 0, we output linear RGB or sRGB as requested
 	else
-		g_out_color.rgb = convert_linear_rgb_to_srgb(g_out_color.rgb);
-#endif
+		if(OUTPUT_LINEAR_RGB == 0) {
+			g_out_color.rgb = convert_linear_rgb_to_srgb(g_out_color.rgb);
+		}
 }

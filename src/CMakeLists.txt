@@ -40,7 +40,6 @@ target_sources(vulkan_renderer PRIVATE
 	shaders/shading_pass.vert.glsl
 	shaders/shared_constants.glsl
 	shaders/srgb_utility.glsl
-	shaders/unrolling.glsl
 	shaders/visibility_pass.frag.glsl
 	shaders/visibility_pass.vert.glsl
 )

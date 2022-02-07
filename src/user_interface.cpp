@@ -204,7 +204,7 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 			ImGui::DragFloat("Min error exponent (base 10)", &settings->error_min_exponent, 0.1f, -9.0f, 0.0f, "%.1f");
 	}
 	*/
-
+	
 	// Switching ray tracing on or off
 	if (app->device.ray_tracing_supported)
 	{
@@ -339,13 +339,13 @@ void specify_user_interface(application_updates_t* updates, application_t* app, 
 	ImGui::SameLine();
 	if (ImGui::Button("Quick load"))
 		updates->quick_load = VK_TRUE;
-
+	
 	/*
 	// A button to reproduce experiments from the publication
 	if (ImGui::Button("Reproduce experiments"))
 		app->experiment_list.next = 0;
 	*/
-
+	
 	// That's all
 	ImGui::End();
 	ImGui::EndFrame();

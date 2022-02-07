@@ -757,18 +757,18 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 		break;
 	};
 	char* defines[] = {
-		format_uint("MATERIAL_COUNT=%u", (uint32_t) scene->materials.material_count),
-		format_uint("POLYGONAL_LIGHT_COUNT=%u", app->scene_specification.polygonal_light_count),
+		//format_uint("MATERIAL_COUNT=%u", (uint32_t) scene->materials.material_count),
+		//format_uint("POLYGONAL_LIGHT_COUNT=%u", app->scene_specification.polygonal_light_count),
+		//format_uint("POLYGONAL_LIGHT_COUNT_CLAMPED=%u", (app->scene_specification.polygonal_light_count < 33) ? app->scene_specification.polygonal_light_count : 33),
 		format_uint("POLYGONAL_LIGHT_ARRAY_SIZE=%u", (app->scene_specification.polygonal_light_count > 0) ? app->scene_specification.polygonal_light_count : 1),
-		format_uint("POLYGONAL_LIGHT_COUNT_CLAMPED=%u", (app->scene_specification.polygonal_light_count < 33) ? app->scene_specification.polygonal_light_count : 33),
-		format_uint("LIGHT_TEXTURE_COUNT=%u", app->light_textures.image_count),
+		//format_uint("LIGHT_TEXTURE_COUNT=%u", app->light_textures.image_count),
 		format_uint("MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING=%u", min_polygonal_light_vertex_count),
 		format_uint("MAX_POLYGONAL_LIGHT_VERTEX_COUNT=%u", max_polygonal_light_vertex_count),
 		format_uint("MAX_POLYGON_VERTEX_COUNT=%u", max_polygon_vertex_count),
-		format_uint("SAMPLE_COUNT=%u", app->render_settings.sample_count),
-		format_uint("SAMPLE_COUNT_CLAMPED=%u", (app->render_settings.sample_count < 33) ? app->render_settings.sample_count : 33),
+		//format_uint("SAMPLE_COUNT=%u", app->render_settings.sample_count),
+		//format_uint("SAMPLE_COUNT_CLAMPED=%u", (app->render_settings.sample_count < 33) ? app->render_settings.sample_count : 33),
 		format_uint("RTX_ON=%u", app->device.ray_tracing_supported),
-		format_uint("SHOW_POLYGONAL_LIGHTS=%u", app->render_settings.show_polygonal_lights),
+		//format_uint("SHOW_POLYGONAL_LIGHTS=%u", app->render_settings.show_polygonal_lights),
 		/*
 		format_uint("SAMPLING_STRATEGIES_DIFFUSE_ONLY=%u", sampling_strategies == sampling_strategies_diffuse_only),
 		format_uint("SAMPLING_STRATEGIES_DIFFUSE_GGX_MIS=%u", sampling_strategies == sampling_strategies_diffuse_ggx_mis),
@@ -791,19 +791,19 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 		format_uint("SAMPLE_POLYGON_BIQUADRATIC_COSINE_WARP_HART=%u", polygon_technique == sample_polygon_biquadratic_cosine_warp_hart),
 		format_uint("SAMPLE_POLYGON_BIQUADRATIC_COSINE_WARP_CLIPPING_HART=%u", polygon_technique == sample_polygon_biquadratic_cosine_warp_clipping_hart),
 		format_uint("SAMPLE_POLYGON_PROJECTED_SOLID_ANGLE_ARVO=%u", polygon_technique == sample_polygon_projected_solid_angle_arvo),
-
+		
 		format_uint("SAMPLE_POLYGON_PROJECTED_SOLID_ANGLE=%u", polygon_technique == sample_polygon_projected_solid_angle || polygon_technique == sample_polygon_projected_solid_angle_biased),
 		copy_string((polygon_technique == sample_polygon_projected_solid_angle_biased) ? "USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING" : "DONT_USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING"),
-
+		
 		format_uint("ERROR_DISPLAY_DIFFUSE=%u", error_display_diffuse),
 		format_uint("ERROR_DISPLAY_SPECULAR=%u", error_display_specular),
 		format_uint("ERROR_INDEX=%u", error_index),
 		*/
-		format_uint("OUTPUT_LINEAR_RGB=%u", output_linear_rgb),
+		//format_uint("OUTPUT_LINEAR_RGB=%u", output_linear_rgb),
 	};
 
 	uint32_t sz_defines = COUNT_OF(defines);
-
+	
 	/*
 	for (uint32_t i = 0; i != sz_defines; ++i)
 	{
@@ -2195,7 +2195,12 @@ void write_constants(void* data, application_t* app) {
 		.exposure_factor = app->render_settings.exposure_factor,
 		.roughness_factor = app->render_settings.roughness_factor,
 		.frame_bits = app->screenshot.frame_bits,
-		.rtx_bits = (app->render_settings.trace_shadow_rays ? rtx_bits_TRACE_SHADOW_RAYS : 0)
+		.rtx_bits = (app->render_settings.trace_shadow_rays ? rtx_bits_TRACE_SHADOW_RAYS : 0),
+		
+		.POLYGONAL_LIGHT_COUNT = app->scene_specification.polygonal_light_count,
+		.SAMPLE_COUNT = app->render_settings.sample_count,
+		.SHOW_POLYGONAL_LIGHTS = app->render_settings.show_polygonal_lights,
+		.OUTPUT_LINEAR_RGB = app->swapchain.format == VK_FORMAT_R8G8B8A8_SRGB || app->swapchain.format == VK_FORMAT_B8G8R8A8_SRGB
 	};
 	set_noise_constants(constants.noise_resolution_mask, &constants.noise_texture_index_mask, constants.noise_random_numbers, &app->noise_table, app->render_settings.animate_noise && (app->screenshot.frame_bits == 0));
 	get_world_to_projection_space(constants.world_to_projection_space, camera, get_aspect_ratio(&app->swapchain));

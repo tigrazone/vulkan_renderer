@@ -145,16 +145,16 @@ int create_acceleration_structure_software(acceleration_structure_t* structure, 
 
 	uint32_t primitive_count = (uint32_t) mesh->triangle_count;
 	uint32_t triangle_count3 = (uint32_t) mesh->triangle_count * 3;
-
+		
 	float *vertices = (float *) malloc(sizeof(float) * triangle_count3);
 	if (!vertices) {
 		printf("Allocation error.");
 		return 1;
-	}
-
+	}	
+	
 	// Dequantize the mesh data
 	const uint32_t* quantized_positions = (const uint32_t*) (mesh_data + mesh->positions.offset);
-
+	
 	uint32_t i2 = 0;
 	for (uint32_t i = 0; i != triangle_count3; ++i) {
 		uint32_t quantized_position[2] = {quantized_positions[i2], quantized_positions[i2 + 1]};
@@ -168,12 +168,12 @@ int create_acceleration_structure_software(acceleration_structure_t* structure, 
 
 		i2 += 2;
 	}
-
+	
 	// Used only for bvh creation. In shaders used only quantized positions
 	free(vertices);
-
+	
 	return 0;
-}
+}	
 
 
 /*! Constructs top- and bottom-level acceleration structures for the given mesh
@@ -187,14 +187,14 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 
 	uint32_t primitive_count = (uint32_t) mesh->triangle_count;
 	uint32_t triangle_count3 = (uint32_t) mesh->triangle_count * 3;
-
+	
 	if (!device->ray_tracing_supported) {
 		printf("Cannot create an acceleration structure without ray tracing support.\n");
 		printf("BUT from now create software BVH\n");
-
+		
 		return create_acceleration_structure_software(structure, device, mesh, mesh_data);
 	}
-
+	
 	memset(structure, 0, sizeof(*structure));
 
 	VK_LOAD(vkGetAccelerationStructureBuildSizesKHR)
@@ -224,7 +224,7 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 		destroy_acceleration_structure(structure, device);
 		return 1;
 	}
-
+		
 	// Dequantize the mesh data
 	const uint32_t* quantized_positions = (const uint32_t*) (mesh_data + mesh->positions.offset);
 	float* vertices = (float*) (staging_data + staging.buffers[0].offset);
@@ -241,7 +241,7 @@ int create_acceleration_structure(acceleration_structure_t* structure, const dev
 
 		i2 += 2;
 	}
-
+	
 	// Figure out how big the buffers for the bottom-level need to be
 	VkAccelerationStructureBuildSizesInfoKHR bottom_sizes = {
 		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,

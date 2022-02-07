@@ -454,7 +454,7 @@ projected_solid_angle_polygon_t prepare_projected_solid_angle_polygon_sampling(u
 				else {
 					outer_ellipse = vertex_ellipse;
 					outer_rsqrt_det = vertex_rsqrt_det;
-				}
+				}				
 			}
 			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(
 				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.vertices[i], polygon.vertices[i + 1]);

@@ -500,6 +500,12 @@ typedef struct per_frame_constants_s {
 	uint32_t noise_texture_index_mask;
 	uint32_t frame_bits;
 	uint32_t rtx_bits;
+	
+	uint32_t POLYGONAL_LIGHT_COUNT;
+	uint32_t SAMPLE_COUNT;
+	uint32_t SHOW_POLYGONAL_LIGHTS;
+	uint32_t OUTPUT_LINEAR_RGB;
+	
 	uint32_t padding_3[1];
 	uint32_t noise_random_numbers[4];
 	ltc_constants_t ltc_constants;
