@@ -1,7 +1,8 @@
 ## Difference from original renderer
-Original renderer is from https://github.com/MomentsInGraphics/vulkan_renderer
+Original renderer https://github.com/MomentsInGraphics/vulkan_renderer
 
-In my verion - essence of presented rendering method, also optimised by arithmetic speedups and precalculated defines. Removed other rendering methods which is was in original repo for comparision. Also I started to create software raytracer but this one is unfinished
+In my verion - essence of presented rendering method, also optimised by arithmetic speedups and precalculated defines. Removed other rendering methods which is was in original repo for comparision. Also I started to create software raytracer but this one is unfinished.
+I add keyboard management IJKL for camera rotate, right mouse button changet to left. F10 for save screenshot to jpg, png, F12 for save screenshot to hdr. Buffering for faster file read. Showed fps and total rendering time, passed samples. And faster for cycles by precalculating.
 
 ***
 
