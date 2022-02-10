@@ -93,6 +93,8 @@ void destroy_texture_loading(texture_2d_loading_t* loading, const device_t* devi
 
 
 int load_2d_textures(images_t* textures, const device_t* device, uint32_t texture_count, const char* const* file_paths, VkBufferUsageFlags usage) {
+	printf("Loading %d textures...\n", texture_count);
+	float startTime = glfwGetTime();
 	memset(textures, 0, sizeof(*textures));
 	texture_2d_loading_t loading = { .texture_count = texture_count };
 	// Open all the texture files and read their headers
@@ -240,5 +242,8 @@ int load_2d_textures(images_t* textures, const device_t* device, uint32_t textur
 	(*textures) = loading.textures;
 	memset(&loading.textures, 0, sizeof(loading.textures));
 	destroy_texture_loading(&loading, device);
+	
+	float elapsedTime  = glfwGetTime() - startTime;
+	printf("Textures loaded in %.1fs\n", elapsedTime);
 	return 0;
 }
