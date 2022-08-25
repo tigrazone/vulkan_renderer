@@ -645,7 +645,7 @@ int create_shading_pass(shading_pass_t* pass, application_t* app)
 		{ .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR },
 	};
 	get_materials_descriptor_layout(&layout_bindings[5], 5, &scene->materials);
-	uint32_t binding_count = COUNT_OF(layout_bindings) - (pass->rtxON ? 0 : 1);
+	uint32_t binding_count = COUNT_OF(layout_bindings) - (1 - pass->rtxON);
 	descriptor_set_request_t set_request = {
 		.stage_flags = VK_SHADER_STAGE_FRAGMENT_BIT,
 		.min_descriptor_count = 1,
